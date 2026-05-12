@@ -1,0 +1,64 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile.prod
+    container_name: masterprint_app
+    restart: unless-stopped
+    env_file:
+      - .env
+    networks:
+      - masterprint_net
+    volumes:
+      - masterprint_storage:/var/www/storage
+      - masterprint_cache:/var/www/bootstrap/cache
+    depends_on:
+      db:
+        condition: service_healthy
+
+  nginx:
+    build:
+      context: .
+      dockerfile: docker/nginx/Dockerfile.prod
+    container_name: masterprint_nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    networks:
+      - masterprint_net
+    volumes:
+      - masterprint_storage:/var/www/storage:ro
+    depends_on:
+      - app
+
+  db:
+    image: mysql:8.0
+    container_name: masterprint_db
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_USER: ${DB_USERNAME}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+    volumes:
+      - masterprint_db_data:/var/lib/mysql
+      - ./docker/mysql/my.cnf:/etc/mysql/conf.d/my.cnf:ro
+    networks:
+      - masterprint_net
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u$${MYSQL_USER} -p$${MYSQL_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+networks:
+  masterprint_net:
+    driver: bridge
+
+volumes:
+  masterprint_db_data:
+    driver: local
+  masterprint_storage:
+    driver: local
+  masterprint_cache:
+    driver: local

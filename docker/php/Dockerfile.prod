@@ -1,0 +1,58 @@
+FROM node:24-alpine AS frontend
+
+WORKDIR /var/www
+
+COPY package*.json ./
+RUN if [ -f package-lock.json ]; then npm ci; else npm install --ignore-scripts; fi
+
+COPY resources ./resources
+COPY vite.config.js ./
+COPY public ./public
+RUN npm run build
+
+FROM php:8.4-fpm AS app
+
+RUN apt-get update && apt-get install -y \
+    git \
+    curl \
+    libpng-dev \
+    libonig-dev \
+    libxml2-dev \
+    libzip-dev \
+    libfreetype6-dev \
+    libjpeg62-turbo-dev \
+    libicu-dev \
+    zip \
+    unzip \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install \
+    pdo_mysql \
+    mbstring \
+    exif \
+    pcntl \
+    bcmath \
+    gd \
+    zip \
+    intl \
+    opcache
+
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+
+WORKDIR /var/www
+
+COPY . .
+COPY --from=frontend /var/www/public/build ./public/build
+
+RUN composer install --no-dev --prefer-dist --optimize-autoloader --no-interaction \
+    && php artisan package:discover --ansi \
+    && mkdir -p storage/framework/cache storage/framework/sessions storage/framework/views storage/logs bootstrap/cache \
+    && chown -R www-data:www-data storage bootstrap/cache
+
+COPY docker/php/entrypoint.prod.sh /usr/local/bin/entrypoint.prod.sh
+RUN chmod +x /usr/local/bin/entrypoint.prod.sh
+
+ENTRYPOINT ["entrypoint.prod.sh"]
+CMD ["php-fpm"]
