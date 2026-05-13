@@ -26,7 +26,10 @@ class Documento extends Model
     ];
 
     protected $attributes = [
-        'status' => 'RASCUNHO',
+        'status'      => 'RASCUNHO',
+        'subtotal'    => 0,
+        'desconto'    => 0,
+        'valor_total' => 0,
     ];
 
     public const TIPOS = [

@@ -9,6 +9,28 @@ class DocumentoRequest extends FormRequest
 {
     public function authorize(): bool { return true; }
 
+    protected function prepareForValidation(): void
+    {
+        $itens = collect($this->input('itens', []))
+            ->map(function (array $item) {
+                $item['desconto_item'] = $item['desconto_item'] ?? 0;
+
+                if ($item['desconto_item'] === '') {
+                    $item['desconto_item'] = 0;
+                }
+
+                return $item;
+            })
+            ->all();
+
+        $desconto = $this->input('desconto', 0);
+
+        $this->merge([
+            'desconto' => $desconto === '' || $desconto === null ? 0 : $desconto,
+            'itens' => $itens,
+        ]);
+    }
+
     public function rules(): array
     {
         return [

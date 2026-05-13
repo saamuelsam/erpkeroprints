@@ -21,6 +21,13 @@ class DocumentoItem extends Model
         'total_item'     => 'decimal:2',
     ];
 
+    protected $attributes = [
+        'quantidade'     => 1,
+        'valor_unitario' => 0,
+        'desconto_item'  => 0,
+        'total_item'     => 0,
+    ];
+
     public function documento(): BelongsTo
     {
         return $this->belongsTo(Documento::class);
@@ -32,7 +39,9 @@ class DocumentoItem extends Model
     protected static function booted(): void
     {
         static::saving(function (DocumentoItem $item) {
-            $item->total_item = ($item->quantidade * $item->valor_unitario) - $item->desconto_item;
+            $desconto = $item->desconto_item ?? 0;
+
+            $item->total_item = ($item->quantidade * $item->valor_unitario) - $desconto;
         });
     }
 }
