@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\OrdemServico;
+use App\Models\EstoqueMovimentacao;
 use App\Models\OrdemServicoItem;
 use App\Models\OrdemServicoHistorico;
 use App\Models\Produto;
@@ -38,9 +39,7 @@ class OrdemServicoService
 
             $os = OrdemServico::create($dados);
 
-            if (!empty($itens)) {
-                $this->sincronizarItens($os, $itens);
-            }
+            $this->sincronizarItens($os, $itens);
 
             $this->registrarHistorico($os, null, $os->status);
 
@@ -71,6 +70,10 @@ class OrdemServicoService
 
             $os->update($dados);
 
+            if (!empty($itens)) {
+                $this->sincronizarItens($os, $itens);
+            }
+
             if ($mudouStatus) {
                 $this->registrarHistorico($os, $statusAnterior, $dados['status']);
 
@@ -79,8 +82,32 @@ class OrdemServicoService
                 }
             }
 
-            if (!empty($itens)) {
-                $this->sincronizarItens($os, $itens);
+            return $os->fresh(['itens', 'cliente']);
+        });
+    }
+
+    public function atualizarStatus(OrdemServico $os, string $novoStatus): OrdemServico
+    {
+        return DB::transaction(function () use ($os, $novoStatus) {
+            $statusAnterior = $os->status;
+
+            if ($novoStatus === $statusAnterior) {
+                return $os->fresh(['itens', 'cliente']);
+            }
+
+            $this->validarMudancaStatus($os, $novoStatus);
+
+            $dados = ['status' => $novoStatus];
+
+            if (in_array($novoStatus, ['FINALIZADA', 'ENTREGUE'], true) && !$os->data_conclusao) {
+                $dados['data_conclusao'] = now()->toDateString();
+            }
+
+            $os->update($dados);
+            $this->registrarHistorico($os, $statusAnterior, $novoStatus);
+
+            if ($novoStatus === 'FINALIZADA') {
+                $this->baixarEstoqueMateriais($os);
             }
 
             return $os->fresh(['itens', 'cliente']);
@@ -176,6 +203,15 @@ class OrdemServicoService
      */
     private function baixarEstoqueMateriais(OrdemServico $os): void
     {
+        $jaBaixouEstoque = EstoqueMovimentacao::where('tipo', 'SAIDA_OS')
+            ->where('referencia_tipo', 'os')
+            ->where('referencia_id', $os->id)
+            ->exists();
+
+        if ($jaBaixouEstoque) {
+            return;
+        }
+
         // Recarrega itens com eager loading para evitar N+1
         $os->load('itens');
 

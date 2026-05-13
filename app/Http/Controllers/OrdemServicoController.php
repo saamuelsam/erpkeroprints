@@ -44,6 +44,37 @@ class OrdemServicoController extends Controller
         return view('ordens-servico.index', compact('ordens', 'statusOpcoes'));
     }
 
+    public function producao()
+    {
+        $statusFluxo = ['ABERTA', 'AGUARDANDO_APROVACAO', 'PRODUCAO', 'FINALIZADA'];
+
+        $ordens = OrdemServico::with('cliente')
+            ->whereIn('status', $statusFluxo)
+            ->orderByRaw('data_prevista_entrega IS NULL')
+            ->orderBy('data_prevista_entrega')
+            ->orderBy('created_at')
+            ->get()
+            ->groupBy('status');
+
+        $indicadores = [
+            'atrasadas' => OrdemServico::whereNotIn('status', ['ENTREGUE', 'CANCELADA'])
+                ->whereDate('data_prevista_entrega', '<', today())
+                ->count(),
+            'hoje' => OrdemServico::whereNotIn('status', ['ENTREGUE', 'CANCELADA'])
+                ->whereDate('data_prevista_entrega', today())
+                ->count(),
+            'producao' => OrdemServico::where('status', 'PRODUCAO')->count(),
+            'prontas' => OrdemServico::where('status', 'FINALIZADA')->count(),
+        ];
+
+        return view('ordens-servico.producao', [
+            'ordensPorStatus' => $ordens,
+            'statusFluxo'     => $statusFluxo,
+            'statusOpcoes'    => OrdemServico::STATUS_LABELS,
+            'indicadores'     => $indicadores,
+        ]);
+    }
+
     public function create()
     {
         $clientes        = Cliente::ativos()->orderBy('nome')->get(['id', 'nome']);
@@ -111,6 +142,21 @@ class OrdemServicoController extends Controller
                 ->with('sucesso', "OS #{$os->numero_os} atualizada com sucesso!");
         } catch (\Exception $e) {
             return back()->withInput()->with('erro', $e->getMessage());
+        }
+    }
+
+    public function atualizarStatusRapido(Request $request, OrdemServico $os)
+    {
+        $validated = $request->validate([
+            'status' => ['required', 'in:ABERTA,PRODUCAO,AGUARDANDO_APROVACAO,FINALIZADA,ENTREGUE,CANCELADA'],
+        ]);
+
+        try {
+            $os = $this->osService->atualizarStatus($os, $validated['status']);
+
+            return back()->with('sucesso', "OS #{$os->numero_os} atualizada para {$os->status_label}.");
+        } catch (\Exception $e) {
+            return back()->with('erro', $e->getMessage());
         }
     }
 

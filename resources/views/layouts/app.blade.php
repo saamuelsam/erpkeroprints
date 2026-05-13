@@ -221,7 +221,10 @@
         </a>
 
         <div class="sidebar-section mt-2">Operações</div>
-        <a href="{{ route('ordens-servico.index') }}" class="nav-link {{ request()->routeIs('ordens-servico.*') ? 'active' : '' }}">
+        <a href="{{ route('ordens-servico.producao') }}" class="nav-link {{ request()->routeIs('ordens-servico.producao') ? 'active' : '' }}">
+            <i class="fa-solid fa-industry"></i> Produção
+        </a>
+        <a href="{{ route('ordens-servico.index') }}" class="nav-link {{ request()->routeIs('ordens-servico.*') && !request()->routeIs('ordens-servico.producao') ? 'active' : '' }}">
             <i class="fa-solid fa-clipboard-list"></i> Ordens de Serviço
         </a>
 

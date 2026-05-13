@@ -4,6 +4,15 @@
 @section('page-title', 'Ordens de Serviço')
 
 @section('content')
+@php
+    $proximosStatus = [
+        'ABERTA' => 'AGUARDANDO_APROVACAO',
+        'AGUARDANDO_APROVACAO' => 'PRODUCAO',
+        'PRODUCAO' => 'FINALIZADA',
+        'FINALIZADA' => 'ENTREGUE',
+    ];
+@endphp
+
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
         <h4 class="mb-0 fw-bold">Ordens de Serviço</h4>
@@ -68,6 +77,7 @@
                     </thead>
                     <tbody>
                         @foreach($ordens as $os)
+                        @php($proximo = $proximosStatus[$os->status] ?? null)
                         <tr>
                             <td>
                                 <a href="{{ route('ordens-servico.show', $os) }}" class="fw-bold text-decoration-none">
@@ -88,6 +98,16 @@
                             <td class="text-end fw-semibold">R$ {{ number_format($os->valor_final, 2, ',', '.') }}</td>
                             <td class="text-end">
                                 <div class="d-flex gap-1 justify-content-end">
+                                    @if($proximo)
+                                        <form method="POST" action="{{ route('ordens-servico.status-rapido', $os) }}">
+                                            @csrf
+                                            @method('PATCH')
+                                            <input type="hidden" name="status" value="{{ $proximo }}">
+                                            <button type="submit" class="btn btn-sm btn-outline-success" title="Avançar para {{ $statusOpcoes[$proximo]['label'] }}">
+                                                <i class="fa-solid fa-forward-step"></i>
+                                            </button>
+                                        </form>
+                                    @endif
                                     <a href="{{ route('ordens-servico.show', $os) }}" class="btn btn-sm btn-outline-primary" title="Ver">
                                         <i class="fa-solid fa-eye"></i>
                                     </a>

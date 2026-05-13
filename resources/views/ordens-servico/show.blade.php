@@ -4,6 +4,16 @@
 @section('page-title', 'OS #' . $os->numero_os)
 
 @section('content')
+@php
+    $proximosStatus = [
+        'ABERTA' => 'AGUARDANDO_APROVACAO',
+        'AGUARDANDO_APROVACAO' => 'PRODUCAO',
+        'PRODUCAO' => 'FINALIZADA',
+        'FINALIZADA' => 'ENTREGUE',
+    ];
+    $proximoStatus = $proximosStatus[$os->status] ?? null;
+@endphp
+
 <div class="d-flex align-items-center mb-4 gap-3 flex-wrap">
     <a href="{{ route('ordens-servico.index') }}" class="btn btn-sm btn-outline-secondary">
         <i class="fa-solid fa-arrow-left me-1"></i>Voltar
@@ -11,6 +21,16 @@
     <h4 class="mb-0 fw-bold">OS #{{ $os->numero_os }}</h4>
     <span class="badge bg-{{ $os->status_badge }} fs-6">{{ $os->status_label }}</span>
     <div class="ms-auto d-flex gap-2 flex-wrap">
+        @if($proximoStatus)
+            <form method="POST" action="{{ route('ordens-servico.status-rapido', $os) }}">
+                @csrf
+                @method('PATCH')
+                <input type="hidden" name="status" value="{{ $proximoStatus }}">
+                <button type="submit" class="btn btn-sm btn-primary">
+                    <i class="fa-solid fa-forward-step me-1"></i>{{ \App\Models\OrdemServico::STATUS_LABELS[$proximoStatus]['label'] }}
+                </button>
+            </form>
+        @endif
         <a href="{{ route('ordens-servico.edit', $os) }}" class="btn btn-sm btn-outline-primary">
             <i class="fa-solid fa-pen me-1"></i>Editar
         </a>

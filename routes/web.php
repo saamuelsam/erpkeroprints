@@ -47,6 +47,10 @@ Route::middleware(['auth'])->group(function () {
          ->name('api.cep.buscar');
 
     // ── Ordens de Serviço ─────────────────────────────────────────────────────
+    Route::get('ordens-servico/producao', [OrdemServicoController::class, 'producao'])
+         ->name('ordens-servico.producao');
+    Route::patch('ordens-servico/{os}/status-rapido', [OrdemServicoController::class, 'atualizarStatusRapido'])
+         ->name('ordens-servico.status-rapido');
     Route::resource('ordens-servico', OrdemServicoController::class)
          ->parameters(['ordens-servico' => 'os']);
 
