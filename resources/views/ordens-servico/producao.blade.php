@@ -13,6 +13,50 @@
     ];
 @endphp
 
+@push('styles')
+<style>
+    .kanban-column {
+        min-height: 220px;
+        transition: background-color .15s ease, outline-color .15s ease;
+    }
+
+    .kanban-column.drag-over {
+        background: #FFFBEA;
+        outline: 2px dashed #E6BB00;
+        outline-offset: -6px;
+    }
+
+    .kanban-card {
+        cursor: grab;
+        transition: opacity .15s ease, transform .15s ease, box-shadow .15s ease;
+    }
+
+    .kanban-card:active {
+        cursor: grabbing;
+    }
+
+    .kanban-card.dragging {
+        opacity: .55;
+        transform: scale(.98);
+        box-shadow: 0 10px 20px rgba(15, 23, 42, .16);
+    }
+
+    .drop-hint {
+        border: 1px dashed #CBD5E1;
+        border-radius: 8px;
+        color: #64748B;
+        display: none;
+        font-size: .8rem;
+        padding: 10px;
+        text-align: center;
+    }
+
+    .kanban-column.drag-over .drop-hint {
+        display: block;
+    }
+</style>
+@endpush
+
 <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
     <div>
         <h4 class="mb-0 fw-bold">Painel de Produção</h4>
@@ -73,14 +117,19 @@
                     </span>
                     <span class="badge bg-light text-dark">{{ $ordens->count() }}</span>
                 </div>
-                <div class="card-body p-2">
+                <div class="card-body p-2 kanban-column" data-status="{{ $status }}">
+                    <div class="drop-hint mb-2">Solte aqui para mover para {{ $statusInfo['label'] }}</div>
                     @forelse($ordens as $os)
                         @php
                             $atrasada = $os->data_prevista_entrega && $os->data_prevista_entrega->isPast() && !$os->data_prevista_entrega->isToday();
                             $hoje = $os->data_prevista_entrega && $os->data_prevista_entrega->isToday();
                             $proximo = $proximosStatus[$os->status] ?? null;
                         @endphp
-                        <div class="border rounded p-3 mb-2 bg-white">
+                        <div class="border rounded p-3 mb-2 bg-white kanban-card"
+                             draggable="true"
+                             data-os-id="{{ $os->id }}"
+                             data-status="{{ $os->status }}"
+                             data-update-url="{{ route('ordens-servico.status-rapido', $os) }}">
                             <div class="d-flex justify-content-between gap-2">
                                 <a href="{{ route('ordens-servico.show', $os) }}" class="fw-bold text-decoration-none">
                                     {{ $os->numero_os }}
@@ -130,3 +179,96 @@
     @endforeach
 </div>
 @endsection
+
+@push('scripts')
+<script>
+const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+let draggedCard = null;
+
+document.querySelectorAll('.kanban-card').forEach(card => {
+    card.addEventListener('dragstart', event => {
+        draggedCard = card;
+        card.classList.add('dragging');
+        event.dataTransfer.effectAllowed = 'move';
+        event.dataTransfer.setData('text/plain', card.dataset.osId);
+    });
+
+    card.addEventListener('dragend', () => {
+        card.classList.remove('dragging');
+        document.querySelectorAll('.kanban-column.drag-over').forEach(column => {
+            column.classList.remove('drag-over');
+        });
+        draggedCard = null;
+    });
+});
+
+document.querySelectorAll('.kanban-column').forEach(column => {
+    column.addEventListener('dragover', event => {
+        if (!draggedCard) return;
+
+        event.preventDefault();
+        event.dataTransfer.dropEffect = 'move';
+        column.classList.add('drag-over');
+    });
+
+    column.addEventListener('dragleave', event => {
+        if (!column.contains(event.relatedTarget)) {
+            column.classList.remove('drag-over');
+        }
+    });
+
+    column.addEventListener('drop', event => {
+        event.preventDefault();
+        column.classList.remove('drag-over');
+
+        if (!draggedCard) return;
+
+        const novoStatus = column.dataset.status;
+        const statusAtual = draggedCard.dataset.status;
+
+        if (!novoStatus || novoStatus === statusAtual) return;
+
+        moverOs(draggedCard, column, novoStatus);
+    });
+});
+
+function moverOs(card, column, novoStatus) {
+    const originalParent = card.parentElement;
+    const originalNext = card.nextElementSibling;
+    const statusAtual = card.dataset.status;
+
+    column.appendChild(card);
+    card.dataset.status = novoStatus;
+
+    fetch(card.dataset.updateUrl, {
+        method: 'PATCH',
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': csrfToken,
+            'X-Requested-With': 'XMLHttpRequest',
+        },
+        body: JSON.stringify({ status: novoStatus }),
+    })
+    .then(async response => {
+        if (!response.ok) {
+            const data = await response.json().catch(() => ({}));
+            throw new Error(data.message || 'Não foi possível mover a OS.');
+        }
+
+        window.location.reload();
+    })
+    .catch(error => {
+        card.dataset.status = statusAtual;
+
+        if (originalNext) {
+            originalParent.insertBefore(card, originalNext);
+        } else {
+            originalParent.appendChild(card);
+        }
+
+        alert(error.message);
+    });
+}
+</script>
+@endpush

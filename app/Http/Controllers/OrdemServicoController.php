@@ -154,8 +154,20 @@ class OrdemServicoController extends Controller
         try {
             $os = $this->osService->atualizarStatus($os, $validated['status']);
 
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => "OS #{$os->numero_os} atualizada para {$os->status_label}.",
+                    'status' => $os->status,
+                    'status_label' => $os->status_label,
+                ]);
+            }
+
             return back()->with('sucesso', "OS #{$os->numero_os} atualizada para {$os->status_label}.");
         } catch (\Exception $e) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $e->getMessage()], 422);
+            }
+
             return back()->with('erro', $e->getMessage());
         }
     }
