@@ -7,6 +7,8 @@ use App\Http\Controllers\ClienteController;
 use App\Http\Controllers\CategoriaController;
 use App\Http\Controllers\ProdutoController;
 use App\Http\Controllers\OrdemServicoController;
+use App\Http\Controllers\VendaController;
+use App\Http\Controllers\MercadoPagoWebhookController;
 use App\Http\Controllers\Financeiro\EntradaController;
 use App\Http\Controllers\Financeiro\SaidaController;
 use App\Http\Controllers\Financeiro\FluxoCaixaController;
@@ -17,6 +19,8 @@ use App\Http\Controllers\Api\CepController;
 
 // ─── Raiz → Login ────────────────────────────────────────────────────────────
 Route::get('/', fn() => redirect()->route('login'));
+Route::post('/webhooks/mercado-pago', MercadoPagoWebhookController::class)
+    ->name('webhooks.mercado-pago');
 
 // ─── Autenticação (laravel/ui) ───────────────────────────────────────────────
 Auth::routes(['register' => false]);
@@ -53,6 +57,13 @@ Route::middleware(['auth'])->group(function () {
          ->name('ordens-servico.status-rapido');
     Route::resource('ordens-servico', OrdemServicoController::class)
          ->parameters(['ordens-servico' => 'os']);
+
+    Route::get('vendas/pdv', [VendaController::class, 'pdv'])->name('vendas.pdv');
+    Route::get('vendas/cliente', [VendaController::class, 'cliente'])->name('vendas.cliente');
+    Route::post('vendas', [VendaController::class, 'store'])->name('vendas.store');
+    Route::post('vendas/{venda}/consultar-pagamento', [VendaController::class, 'consultarPagamento'])->name('vendas.consultar-pagamento');
+    Route::post('vendas/{venda}/cancelar', [VendaController::class, 'cancelar'])->name('vendas.cancelar');
+    Route::get('vendas', [VendaController::class, 'index'])->name('vendas.index');
 
     // ── Financeiro ────────────────────────────────────────────────────────────
     Route::prefix('financeiro')->name('financeiro.')->group(function () {

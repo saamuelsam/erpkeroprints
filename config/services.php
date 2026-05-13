@@ -35,4 +35,9 @@ return [
         ],
     ],
 
+    'mercado_pago' => [
+        'access_token' => env('MERCADO_PAGO_ACCESS_TOKEN'),
+        'default_payer_email' => env('MERCADO_PAGO_DEFAULT_PAYER_EMAIL', 'cliente@example.com'),
+    ],
+
 ];

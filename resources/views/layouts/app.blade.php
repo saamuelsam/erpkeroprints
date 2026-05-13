@@ -221,6 +221,9 @@
         </a>
 
         <div class="sidebar-section mt-2">Operações</div>
+        <a href="{{ route('vendas.pdv') }}" class="nav-link {{ request()->routeIs('vendas.*') ? 'active' : '' }}">
+            <i class="fa-solid fa-cash-register"></i> Vendas / PDV
+        </a>
         <a href="{{ route('ordens-servico.producao') }}" class="nav-link {{ request()->routeIs('ordens-servico.producao') ? 'active' : '' }}">
             <i class="fa-solid fa-industry"></i> Produção
         </a>
