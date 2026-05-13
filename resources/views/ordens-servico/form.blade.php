@@ -123,7 +123,7 @@
                             <div class="input-group input-group-sm">
                                 <span class="input-group-text"><i class="fa-solid fa-barcode"></i></span>
                                 <input type="text" id="busca-produto" class="form-control"
-                                       placeholder="Digite o nome ou código do produto para buscar e adicionar...">
+                                       placeholder="Digite, cole ou leia o QR/código do produto...">
                             </div>
                             <div id="resultado-busca" class="list-group position-absolute" style="z-index:1000;min-width:300px;display:none;"></div>
                         </div>
@@ -274,9 +274,52 @@ document.getElementById('btn-add-item').addEventListener('click', () => adiciona
 const inputBusca   = document.getElementById('busca-produto');
 const divResultado = document.getElementById('resultado-busca');
 
+function normalizarLeituraProduto(valor) {
+    const texto = (valor || '').trim();
+    if (!texto) return '';
+
+    try {
+        const dados = JSON.parse(texto);
+        return String(dados.codigo_barras || dados.codigo_interno || dados.codigo || dados.sku || texto).trim();
+    } catch (e) {}
+
+    try {
+        const url = new URL(texto);
+        return String(
+            url.searchParams.get('codigo_barras') ||
+            url.searchParams.get('codigo_interno') ||
+            url.searchParams.get('codigo') ||
+            url.searchParams.get('sku') ||
+            url.pathname.split('/').filter(Boolean).pop() ||
+            texto
+        ).trim();
+    } catch (e) {}
+
+    return texto;
+}
+
+function buscarProdutos(q, exact = false) {
+    const leitura = normalizarLeituraProduto(q);
+    if (!leitura) return Promise.resolve([]);
+
+    const params = new URLSearchParams({ q: leitura });
+    if (exact) params.set('exact', '1');
+
+    return fetch(`${buscaUrl}?${params.toString()}`, {
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    }).then(r => r.json());
+}
+
+function selecionarProduto(produto) {
+    adicionarItem(produto);
+    inputBusca.value = '';
+    divResultado.style.display = 'none';
+    inputBusca.focus();
+}
+
 inputBusca.addEventListener('input', () => {
     clearTimeout(buscaTimer);
-    const q = inputBusca.value.trim();
+    const q = normalizarLeituraProduto(inputBusca.value);
     if (q.length < 2) { divResultado.style.display = 'none'; return; }
 
     buscaTimer = setTimeout(() => {
@@ -306,6 +349,41 @@ inputBusca.addEventListener('input', () => {
         })
         .catch(() => { divResultado.style.display = 'none'; });
     }, 300);
+});
+
+inputBusca.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter') return;
+
+    e.preventDefault();
+    clearTimeout(buscaTimer);
+
+    const q = normalizarLeituraProduto(inputBusca.value);
+    if (!q) return;
+
+    buscarProdutos(q, true)
+        .then(produtos => produtos.length ? produtos : buscarProdutos(q))
+        .then(produtos => {
+            if (produtos.length === 1) {
+                selecionarProduto(produtos[0]);
+                return;
+            }
+
+            divResultado.innerHTML = '';
+            if (!produtos.length) {
+                divResultado.innerHTML = '<a class="list-group-item list-group-item-action text-muted small">Nenhum produto encontrado.</a>';
+            } else {
+                produtos.forEach(p => {
+                    const a = document.createElement('a');
+                    a.className = 'list-group-item list-group-item-action';
+                    a.innerHTML = `<div class="fw-semibold small">${p.nome}</div>
+                        <small class="text-muted">Cod: ${p.codigo_interno || '-'} | Estoque: ${p.quantidade_estoque} ${p.unidade_medida} | R$ ${parseFloat(p.preco_venda).toFixed(2).replace('.',',')}</small>`;
+                    a.addEventListener('click', () => selecionarProduto(p));
+                    divResultado.appendChild(a);
+                });
+            }
+            divResultado.style.display = 'block';
+        })
+        .catch(() => { divResultado.style.display = 'none'; });
 });
 
 // Fecha resultado ao clicar fora

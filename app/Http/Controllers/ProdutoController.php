@@ -123,13 +123,26 @@ class ProdutoController extends Controller
      */
     public function buscarApi(Request $request)
     {
-        $termo = $request->input('q', '');
+        $termo = trim((string) $request->input('q', ''));
 
-        $produtos = Produto::ativos()
-            ->busca($termo)
+        if ($termo === '') {
+            return response()->json([]);
+        }
+
+        $query = Produto::ativos()
             ->select(['id', 'nome', 'codigo_interno', 'codigo_barras', 'preco_venda', 'custo_unitario', 'quantidade_estoque', 'unidade_medida'])
-            ->limit(10)
-            ->get();
+            ->limit(10);
+
+        if ($request->boolean('exact')) {
+            $query->where(function ($q) use ($termo) {
+                $q->where('codigo_barras', $termo)
+                    ->orWhere('codigo_interno', $termo);
+            });
+        } else {
+            $query->busca($termo)->orderBy('nome');
+        }
+
+        $produtos = $query->get();
 
         return response()->json($produtos);
     }

@@ -113,6 +113,14 @@
                         </table>
                     </div>
                 </div>
+                <div class="card-footer bg-light">
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text"><i class="fa-solid fa-barcode"></i></span>
+                        <input type="text" id="buscaProdutoDocumento" class="form-control"
+                               placeholder="Digite, cole ou leia o QR/código do produto...">
+                    </div>
+                    <div id="resultadoBuscaProdutoDocumento" class="list-group position-absolute" style="z-index:1000;min-width:300px;display:none;"></div>
+                </div>
             </div>
         </div>
 
@@ -154,6 +162,8 @@
 @push('scripts')
 <script>
 let itemIndex = 0;
+const buscaProdutosUrl = '{{ route('api.produtos.buscar') }}';
+let buscaProdutoTimer;
 
 function adicionarItem(descricao = '', quantidade = 1, valorUnitario = '', descontoItem = 0) {
     const tbody = document.getElementById('itensBody');
@@ -169,6 +179,71 @@ function adicionarItem(descricao = '', quantidade = 1, valorUnitario = '', desco
     tbody.appendChild(row);
     itemIndex++;
     calcularTotal();
+}
+
+function normalizarLeituraProduto(valor) {
+    const texto = (valor || '').trim();
+    if (!texto) return '';
+
+    try {
+        const dados = JSON.parse(texto);
+        return String(dados.codigo_barras || dados.codigo_interno || dados.codigo || dados.sku || texto).trim();
+    } catch (e) {}
+
+    try {
+        const url = new URL(texto);
+        return String(
+            url.searchParams.get('codigo_barras') ||
+            url.searchParams.get('codigo_interno') ||
+            url.searchParams.get('codigo') ||
+            url.searchParams.get('sku') ||
+            url.pathname.split('/').filter(Boolean).pop() ||
+            texto
+        ).trim();
+    } catch (e) {}
+
+    return texto;
+}
+
+function buscarProdutos(q, exact = false) {
+    const leitura = normalizarLeituraProduto(q);
+    if (!leitura) return Promise.resolve([]);
+
+    const params = new URLSearchParams({ q: leitura });
+    if (exact) params.set('exact', '1');
+
+    return fetch(`${buscaProdutosUrl}?${params.toString()}`, {
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    }).then(r => r.json());
+}
+
+function adicionarProdutoDocumento(produto) {
+    adicionarItem(produto.nome, 1, produto.preco_venda, 0);
+    const input = document.getElementById('buscaProdutoDocumento');
+    const resultado = document.getElementById('resultadoBuscaProdutoDocumento');
+    input.value = '';
+    resultado.style.display = 'none';
+    input.focus();
+}
+
+function renderizarResultadosProduto(produtos) {
+    const resultado = document.getElementById('resultadoBuscaProdutoDocumento');
+    resultado.innerHTML = '';
+
+    if (!produtos.length) {
+        resultado.innerHTML = '<a class="list-group-item list-group-item-action text-muted small">Nenhum produto encontrado.</a>';
+    } else {
+        produtos.forEach(p => {
+            const a = document.createElement('a');
+            a.className = 'list-group-item list-group-item-action';
+            a.innerHTML = `<div class="fw-semibold small">${p.nome}</div>
+                <small class="text-muted">Cod: ${p.codigo_interno || '-'} | Estoque: ${p.quantidade_estoque} ${p.unidade_medida} | R$ ${parseFloat(p.preco_venda).toFixed(2).replace('.', ',')}</small>`;
+            a.addEventListener('click', () => adicionarProdutoDocumento(p));
+            resultado.appendChild(a);
+        });
+    }
+
+    resultado.style.display = 'block';
 }
 
 function calcularTotal() {
@@ -203,6 +278,49 @@ document.addEventListener('DOMContentLoaded', function() {
     @else
         adicionarItem();
     @endif
+
+    const inputBuscaProduto = document.getElementById('buscaProdutoDocumento');
+    const resultadoBuscaProduto = document.getElementById('resultadoBuscaProdutoDocumento');
+
+    inputBuscaProduto?.addEventListener('input', () => {
+        clearTimeout(buscaProdutoTimer);
+        const q = normalizarLeituraProduto(inputBuscaProduto.value);
+        if (q.length < 2) { resultadoBuscaProduto.style.display = 'none'; return; }
+
+        buscaProdutoTimer = setTimeout(() => {
+            buscarProdutos(q)
+                .then(renderizarResultadosProduto)
+                .catch(() => { resultadoBuscaProduto.style.display = 'none'; });
+        }, 300);
+    });
+
+    inputBuscaProduto?.addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter') return;
+
+        e.preventDefault();
+        clearTimeout(buscaProdutoTimer);
+
+        const q = normalizarLeituraProduto(inputBuscaProduto.value);
+        if (!q) return;
+
+        buscarProdutos(q, true)
+            .then(produtos => produtos.length ? produtos : buscarProdutos(q))
+            .then(produtos => {
+                if (produtos.length === 1) {
+                    adicionarProdutoDocumento(produtos[0]);
+                    return;
+                }
+
+                renderizarResultadosProduto(produtos);
+            })
+            .catch(() => { resultadoBuscaProduto.style.display = 'none'; });
+    });
+
+    document.addEventListener('click', (e) => {
+        if (!inputBuscaProduto?.contains(e.target) && !resultadoBuscaProduto?.contains(e.target)) {
+            resultadoBuscaProduto.style.display = 'none';
+        }
+    });
 });
 </script>
 @endpush
