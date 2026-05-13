@@ -274,11 +274,16 @@ function renderCarrinho() {
 }
 
 function publicarCliente(extra = {}) {
+    const selectedCliente = clienteId.options[clienteId.selectedIndex];
+
     canalCliente?.postMessage({
         type: 'pdv-update',
         carrinho,
         totais: totais(),
+        desconto: Number(descontoInput.value || 0),
         formaPagamento: formaPagamento.options[formaPagamento.selectedIndex]?.text || '',
+        formaPagamentoCodigo: formaPagamento.value,
+        cliente: selectedCliente?.value ? selectedCliente.text : 'Consumidor final',
         venda: vendaAtual,
         ...extra,
     });
@@ -355,10 +360,10 @@ document.getElementById('btnFinalizar').addEventListener('click', () => {
         const data = await response.json();
         if (!response.ok) throw new Error(data.message || 'Erro ao finalizar venda.');
         vendaAtual = data.venda;
+        mostrarPix(vendaAtual);
         publicarCliente({ type: 'pdv-sale-created' });
 
         if (vendaAtual.forma_pagamento === 'PIX') {
-            mostrarPix(vendaAtual);
             iniciarConsultaPix();
         } else {
             alert(data.message);
@@ -369,10 +374,11 @@ document.getElementById('btnFinalizar').addEventListener('click', () => {
 });
 
 function mostrarPix(venda) {
-    document.getElementById('pixBox').style.display = 'block';
+    document.getElementById('pixBox').style.display = venda.forma_pagamento === 'PIX' ? 'block' : 'none';
     document.getElementById('pixStatus').textContent = venda.status_label;
     document.getElementById('pixCopiaCola').value = venda.pix_qr_code || '';
     document.getElementById('pixQrImage').src = venda.pix_qr_code_base64 ? `data:image/png;base64,${venda.pix_qr_code_base64}` : '';
+    publicarCliente();
 }
 
 function iniciarConsultaPix() {
