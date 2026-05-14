@@ -25,9 +25,9 @@ class PixManualService
     private function payload(string $chave, string $nome, string $cidade, float $valor, string $identificador): string
     {
         $gui = $this->campo('00', 'br.gov.bcb.pix');
-        $pixKey = $this->campo('01', $chave);
+        $pixKey = $this->campo('01', $this->sanitizarChave($chave));
         $merchantAccount = $this->campo('26', $gui . $pixKey);
-        $additionalData = $this->campo('62', $this->campo('05', $this->sanitizar($identificador, 25)));
+        $additionalData = $this->campo('62', $this->campo('05', $this->sanitizarTxid($identificador)));
 
         $payloadSemCrc =
             $this->campo('00', '01') .
@@ -52,9 +52,29 @@ class PixManualService
     private function sanitizar(string $valor, int $limite): string
     {
         $semAcento = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $valor) ?: $valor;
-        $limpo = preg_replace('/[^A-Za-z0-9 .\-]/', '', $semAcento) ?: '';
+        $limpo = preg_replace('/[^A-Za-z0-9 ]/', '', $semAcento) ?: '';
+        $limpo = preg_replace('/\s+/', ' ', trim($limpo)) ?: '';
 
         return strtoupper(substr($limpo, 0, $limite));
+    }
+
+    private function sanitizarChave(string $chave): string
+    {
+        $chave = trim($chave);
+
+        if (preg_match('/^\d[\d.\-\/\s]+$/', $chave)) {
+            return preg_replace('/\D/', '', $chave) ?: $chave;
+        }
+
+        return $chave;
+    }
+
+    private function sanitizarTxid(string $identificador): string
+    {
+        $semAcento = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $identificador) ?: $identificador;
+        $txid = preg_replace('/[^A-Za-z0-9]/', '', $semAcento) ?: 'KERO';
+
+        return strtoupper(substr($txid, 0, 25));
     }
 
     private function crc16(string $payload): string

@@ -22,9 +22,9 @@
 {{-- Filtros --}}
 <div class="card mb-4">
     <div class="card-body py-3">
-        <form method="GET" class="row g-2 align-items-end">
+        <form method="GET" class="row g-2 align-items-end" id="produtoFiltroForm">
             <div class="col-12 col-md-4">
-                <input type="text" name="busca" value="{{ request('busca') }}" class="form-control" placeholder="Nome, código, código de barras...">
+                <input type="text" name="busca" value="{{ request('busca') }}" class="form-control" id="produtoBuscaInput" placeholder="Nome, código, código de barras...">
             </div>
             <div class="col-12 col-md-3">
                 <select name="categoria_id" class="form-select">
@@ -138,3 +138,24 @@
     </div>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+const produtoFiltroForm = document.getElementById('produtoFiltroForm');
+const produtoBuscaInput = document.getElementById('produtoBuscaInput');
+let produtoFiltroTimer;
+
+function submitProdutoFiltro() {
+    produtoFiltroForm.requestSubmit();
+}
+
+produtoBuscaInput?.addEventListener('input', () => {
+    clearTimeout(produtoFiltroTimer);
+    produtoFiltroTimer = setTimeout(submitProdutoFiltro, 500);
+});
+
+produtoFiltroForm?.querySelectorAll('select, input[type="checkbox"]').forEach(campo => {
+    campo.addEventListener('change', submitProdutoFiltro);
+});
+</script>
+@endpush
