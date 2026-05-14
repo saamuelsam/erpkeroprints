@@ -118,18 +118,25 @@ class VendaController extends Controller
         }
     }
 
-    public function confirmarManual(Venda $venda)
+    public function confirmarManual(Request $request, Venda $venda)
     {
         try {
             if ($venda->forma_pagamento !== 'PIX' || $venda->mercado_pago_payment_id) {
                 return response()->json(['message' => 'Esta venda nao usa Pix manual.'], 422);
             }
 
-            $venda = $this->vendaService->confirmarPagamento($venda);
+            $validated = $request->validate([
+                'pix_confirmacao_referencia' => ['required', 'string', 'min:4', 'max:120'],
+                'pix_confirmacao_pagador' => ['required', 'string', 'max:150'],
+                'pix_confirmacao_observacao' => ['nullable', 'string', 'max:500'],
+                'confirmou_extrato' => ['accepted'],
+            ]);
+
+            $venda = $this->vendaService->confirmarPagamentoManual($venda, $validated);
 
             return response()->json([
                 'venda' => $this->formatarVenda($venda),
-                'message' => 'Pagamento manual confirmado. Venda finalizada.',
+                'message' => 'Pagamento manual conferido e venda finalizada.',
             ]);
         } catch (\Exception $e) {
             return response()->json(['message' => $e->getMessage()], 422);
@@ -166,6 +173,9 @@ class VendaController extends Controller
             'pix_qr_code_image_url' => $venda->getAttribute('pix_qr_code_image_url')
                 ?: ($venda->pix_qr_code ? 'https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=' . urlencode($venda->pix_qr_code) : null),
             'pix_manual' => $venda->forma_pagamento === 'PIX' && blank($venda->mercado_pago_payment_id),
+            'pix_confirmado_em' => optional($venda->pix_confirmado_em)->toISOString(),
+            'pix_confirmacao_referencia' => $venda->pix_confirmacao_referencia,
+            'pix_confirmacao_pagador' => $venda->pix_confirmacao_pagador,
             'mercado_pago_status' => $venda->mercado_pago_status,
             'itens' => $venda->itens->map(fn($item) => [
                 'descricao' => $item->descricao,

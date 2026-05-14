@@ -59,6 +59,7 @@
     </div>
 </div>
 
+<div id="produtosResultado">
 <div class="card">
     <div class="card-body p-0">
         @if($produtos->isEmpty())
@@ -137,25 +138,81 @@
         @endif
     </div>
 </div>
+</div>
 @endsection
 
 @push('scripts')
 <script>
 const produtoFiltroForm = document.getElementById('produtoFiltroForm');
 const produtoBuscaInput = document.getElementById('produtoBuscaInput');
+const produtosResultado = document.getElementById('produtosResultado');
 let produtoFiltroTimer;
+let produtoBuscaAbortController;
 
-function submitProdutoFiltro() {
-    produtoFiltroForm.requestSubmit();
+function montarUrlProdutoFiltro(urlDestino = null) {
+    const url = urlDestino ? new URL(urlDestino, window.location.origin) : new URL(window.location.href);
+
+    if (!urlDestino) {
+        const params = new URLSearchParams(new FormData(produtoFiltroForm));
+        url.search = params.toString();
+    }
+
+    return url;
+}
+
+async function buscarProdutosAoVivo(urlDestino = null) {
+    if (!produtoFiltroForm || !produtosResultado) return;
+
+    produtoBuscaAbortController?.abort();
+    produtoBuscaAbortController = new AbortController();
+    const url = montarUrlProdutoFiltro(urlDestino);
+
+    produtosResultado.classList.add('opacity-50');
+
+    try {
+        const response = await fetch(url, {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            signal: produtoBuscaAbortController.signal,
+        });
+        const html = await response.text();
+        const doc = new DOMParser().parseFromString(html, 'text/html');
+        const novoResultado = doc.getElementById('produtosResultado');
+
+        if (!response.ok || !novoResultado) {
+            throw new Error('Nao foi possivel atualizar os produtos.');
+        }
+
+        produtosResultado.innerHTML = novoResultado.innerHTML;
+        window.history.replaceState({}, '', url);
+    } catch (error) {
+        if (error.name !== 'AbortError') {
+            console.error(error);
+        }
+    } finally {
+        produtosResultado.classList.remove('opacity-50');
+    }
 }
 
 produtoBuscaInput?.addEventListener('input', () => {
     clearTimeout(produtoFiltroTimer);
-    produtoFiltroTimer = setTimeout(submitProdutoFiltro, 500);
+    produtoFiltroTimer = setTimeout(() => buscarProdutosAoVivo(), 350);
+});
+
+produtoFiltroForm?.addEventListener('submit', event => {
+    event.preventDefault();
+    buscarProdutosAoVivo();
 });
 
 produtoFiltroForm?.querySelectorAll('select, input[type="checkbox"]').forEach(campo => {
-    campo.addEventListener('change', submitProdutoFiltro);
+    campo.addEventListener('change', () => buscarProdutosAoVivo());
+});
+
+produtosResultado?.addEventListener('click', event => {
+    const link = event.target.closest('.pagination a');
+    if (!link) return;
+
+    event.preventDefault();
+    buscarProdutosAoVivo(link.href);
 });
 </script>
 @endpush

@@ -24,6 +24,11 @@ class Venda extends Model
         'mercado_pago_status',
         'pix_qr_code',
         'pix_qr_code_base64',
+        'pix_confirmado_por',
+        'pix_confirmado_em',
+        'pix_confirmacao_referencia',
+        'pix_confirmacao_pagador',
+        'pix_confirmacao_observacao',
         'pago_em',
     ];
 
@@ -31,6 +36,7 @@ class Venda extends Model
         'subtotal' => 'decimal:2',
         'desconto' => 'decimal:2',
         'valor_total' => 'decimal:2',
+        'pix_confirmado_em' => 'datetime',
         'pago_em' => 'datetime',
     ];
 
@@ -63,6 +69,11 @@ class Venda extends Model
     public function responsavel(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id');
+    }
+
+    public function pixConfirmador(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'pix_confirmado_por');
     }
 
     public function itens(): HasMany

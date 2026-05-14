@@ -95,6 +95,28 @@ class VendaService
         return $venda->fresh(['itens.produto', 'cliente']);
     }
 
+    public function confirmarPagamentoManual(Venda $venda, array $dados): Venda
+    {
+        return DB::transaction(function () use ($venda, $dados) {
+            $venda = Venda::lockForUpdate()->findOrFail($venda->id);
+
+            if ($venda->status === 'CANCELADA') {
+                throw new RuntimeException('Venda cancelada nao pode ser confirmada.');
+            }
+
+            $venda->update([
+                'mercado_pago_status' => 'manual_pix_confirmed',
+                'pix_confirmado_por' => Auth::id(),
+                'pix_confirmado_em' => now(),
+                'pix_confirmacao_referencia' => $dados['pix_confirmacao_referencia'],
+                'pix_confirmacao_pagador' => $dados['pix_confirmacao_pagador'],
+                'pix_confirmacao_observacao' => $dados['pix_confirmacao_observacao'] ?? null,
+            ]);
+
+            return $this->confirmarPagamento($venda);
+        });
+    }
+
     public function confirmarPagamento(Venda $venda): Venda
     {
         return DB::transaction(function () use ($venda) {

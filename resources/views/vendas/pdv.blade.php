@@ -143,6 +143,46 @@
         </div>
     </div>
 </div>
+
+<div class="modal fade" id="pixManualModal" tabindex="-1" aria-labelledby="pixManualModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <form class="modal-content" id="pixManualForm">
+            <div class="modal-header">
+                <h5 class="modal-title" id="pixManualModalLabel">Confirmar Pix manual</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning small">
+                    Confirme somente depois de conferir no aplicativo do banco que o valor caiu na chave Pix cadastrada.
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Nome de quem pagou</label>
+                    <input type="text" class="form-control" id="pixConfirmacaoPagador" maxlength="150" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Codigo/autenticacao do comprovante</label>
+                    <input type="text" class="form-control" id="pixConfirmacaoReferencia" minlength="4" maxlength="120" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Observacao</label>
+                    <textarea class="form-control" id="pixConfirmacaoObservacao" rows="2" maxlength="500" placeholder="Ex.: conferido no app do banco, valor e horario batem."></textarea>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="pixConfirmouExtrato" required>
+                    <label class="form-check-label" for="pixConfirmouExtrato">
+                        Conferi no extrato/app bancario que o Pix entrou e o valor bate com a venda.
+                    </label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="submit" class="btn btn-success" id="btnSalvarConfirmacaoPix">
+                    <i class="fa-solid fa-check me-1"></i>Confirmar pagamento
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
 @endsection
 
 @push('scripts')
@@ -162,6 +202,9 @@ const descontoInput = document.getElementById('desconto');
 const formaPagamento = document.getElementById('formaPagamento');
 const clienteId = document.getElementById('clienteId');
 const payerEmail = document.getElementById('payerEmail');
+const pixManualForm = document.getElementById('pixManualForm');
+const pixManualModalEl = document.getElementById('pixManualModal');
+const pixManualModal = pixManualModalEl ? new bootstrap.Modal(pixManualModalEl) : null;
 
 function dinheiro(valor) {
     return 'R$ ' + Number(valor || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
@@ -417,22 +460,48 @@ function consultarPix() {
 
 document.getElementById('btnConsultarPix').addEventListener('click', consultarPix);
 document.getElementById('btnConfirmarPixManual').addEventListener('click', () => {
-    if (!vendaAtual?.id || !confirm('Confirmar que o Pix caiu na conta?')) return;
+    if (!vendaAtual?.id) return;
+    pixManualForm?.reset();
+    pixManualModal?.show();
+});
+
+pixManualForm?.addEventListener('submit', event => {
+    event.preventDefault();
+    if (!vendaAtual?.id) return;
+
+    const btn = document.getElementById('btnSalvarConfirmacaoPix');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i>Confirmando...';
 
     fetch(`/vendas/${vendaAtual.id}/confirmar-manual`, {
         method: 'POST',
-        headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': csrfToken,
+        },
+        body: JSON.stringify({
+            pix_confirmacao_pagador: document.getElementById('pixConfirmacaoPagador').value,
+            pix_confirmacao_referencia: document.getElementById('pixConfirmacaoReferencia').value,
+            pix_confirmacao_observacao: document.getElementById('pixConfirmacaoObservacao').value,
+            confirmou_extrato: document.getElementById('pixConfirmouExtrato').checked ? '1' : '',
+        }),
     })
     .then(async response => {
         const data = await response.json();
         if (!response.ok) throw new Error(data.message || 'Erro ao confirmar Pix.');
         vendaAtual = data.venda;
+        pixManualModal?.hide();
         mostrarPix(vendaAtual);
         publicarCliente();
         alert(data.message);
         novaVenda();
     })
-    .catch(error => alert(error.message));
+    .catch(error => alert(error.message))
+    .finally(() => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-check me-1"></i>Confirmar pagamento';
+    });
 });
 
 function novaVenda() {
