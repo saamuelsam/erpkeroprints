@@ -19,6 +19,9 @@
         <button class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#modalEntrada">
             <i class="fa-solid fa-arrow-up me-1"></i>Entrada de Estoque
         </button>
+        <button class="btn btn-sm btn-outline-warning" data-bs-toggle="modal" data-bs-target="#modalAjusteEstoque">
+            <i class="fa-solid fa-scale-balanced me-1"></i>Ajustar Estoque
+        </button>
     </div>
 </div>
 
@@ -156,6 +159,41 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
                     <button type="submit" class="btn btn-success"><i class="fa-solid fa-check me-1"></i>Registrar Entrada</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{{-- Modal: Ajuste exato de Estoque --}}
+<div class="modal fade" id="modalAjusteEstoque" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fa-solid fa-scale-balanced me-2 text-warning"></i>Ajustar Estoque</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ route('produtos.ajustar-estoque', $produto) }}">
+                @csrf
+                @method('PATCH')
+                <div class="modal-body">
+                    <div class="alert alert-warning small">
+                        Use este ajuste apenas para corrigir erro de contagem. O sistema vai registrar a diferença no histórico.
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Estoque correto ({{ $produto->unidade_medida }}) *</label>
+                        <input type="number" name="quantidade_estoque" class="form-control"
+                               value="{{ $produto->quantidade_estoque }}" step="0.001" min="0" required>
+                        <div class="form-text">Estoque atual: {{ number_format($produto->quantidade_estoque, 3, ',', '.') }} {{ $produto->unidade_medida }}</div>
+                    </div>
+                    <div class="mb-0">
+                        <label class="form-label fw-semibold">Motivo</label>
+                        <input type="text" name="motivo" class="form-control" placeholder="Ex: Contagem física, lançamento duplicado, erro de compra...">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-warning"><i class="fa-solid fa-check me-1"></i>Salvar Ajuste</button>
                 </div>
             </form>
         </div>

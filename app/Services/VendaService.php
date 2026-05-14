@@ -69,6 +69,19 @@ class VendaService
         return $venda->fresh(['itens.produto', 'cliente']);
     }
 
+    public function anexarPixManual(Venda $venda, array $pix): Venda
+    {
+        $venda->update([
+            'mercado_pago_status' => 'manual_pix_pending',
+            'pix_qr_code' => $pix['qr_code'] ?? null,
+            'pix_qr_code_base64' => null,
+        ]);
+
+        $venda->setAttribute('pix_qr_code_image_url', $pix['qr_code_image_url'] ?? null);
+
+        return $venda->fresh(['itens.produto', 'cliente']);
+    }
+
     public function sincronizarPagamentoMercadoPago(Venda $venda, array $pagamento): Venda
     {
         $venda->update([

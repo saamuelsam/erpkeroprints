@@ -40,4 +40,10 @@ return [
         'default_payer_email' => env('MERCADO_PAGO_DEFAULT_PAYER_EMAIL', 'cliente@example.com'),
     ],
 
+    'pix_manual' => [
+        'key' => env('PIX_MANUAL_KEY', '01156579325'),
+        'merchant_name' => env('PIX_MANUAL_MERCHANT_NAME', 'KERO PRINTS'),
+        'merchant_city' => env('PIX_MANUAL_MERCHANT_CITY', 'SAO PAULO'),
+    ],
+
 ];

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Cliente;
 use App\Models\Venda;
 use App\Services\MercadoPagoPixService;
+use App\Services\PixManualService;
 use App\Services\VendaService;
 use Illuminate\Http\Request;
 
@@ -13,6 +14,7 @@ class VendaController extends Controller
     public function __construct(
         protected VendaService $vendaService,
         protected MercadoPagoPixService $mercadoPagoPixService,
+        protected PixManualService $pixManualService,
     ) {
     }
 
@@ -67,20 +69,20 @@ class VendaController extends Controller
             'itens.*.preco_unitario' => ['required', 'numeric', 'min:0'],
         ]);
 
-        if ($validated['forma_pagamento'] === 'PIX' && blank(config('services.mercado_pago.access_token'))) {
-            return response()->json([
-                'message' => 'Configure MERCADO_PAGO_ACCESS_TOKEN no .env para usar Pix automatico.',
-            ], 422);
-        }
-
         $venda = null;
 
         try {
             $venda = $this->vendaService->criar($validated, $validated['itens']);
 
             if ($venda->forma_pagamento === 'PIX') {
-                $pagamento = $this->mercadoPagoPixService->criarPix($venda, $validated['payer_email'] ?? null);
-                $venda = $this->vendaService->anexarPix($venda, $pagamento);
+                if (filled(config('services.mercado_pago.access_token'))) {
+                    $pagamento = $this->mercadoPagoPixService->criarPix($venda, $validated['payer_email'] ?? null);
+                    $venda = $this->vendaService->anexarPix($venda, $pagamento);
+                } else {
+                    $pix = $this->pixManualService->gerarParaVenda($venda);
+                    $venda = $this->vendaService->anexarPixManual($venda, $pix);
+                    $venda->setAttribute('pix_qr_code_image_url', $pix['qr_code_image_url']);
+                }
             }
 
             return response()->json([
@@ -116,6 +118,24 @@ class VendaController extends Controller
         }
     }
 
+    public function confirmarManual(Venda $venda)
+    {
+        try {
+            if ($venda->forma_pagamento !== 'PIX' || $venda->mercado_pago_payment_id) {
+                return response()->json(['message' => 'Esta venda nao usa Pix manual.'], 422);
+            }
+
+            $venda = $this->vendaService->confirmarPagamento($venda);
+
+            return response()->json([
+                'venda' => $this->formatarVenda($venda),
+                'message' => 'Pagamento manual confirmado. Venda finalizada.',
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+    }
+
     public function cancelar(Venda $venda)
     {
         try {
@@ -143,6 +163,9 @@ class VendaController extends Controller
             'valor_total' => (float) $venda->valor_total,
             'pix_qr_code' => $venda->pix_qr_code,
             'pix_qr_code_base64' => $venda->pix_qr_code_base64,
+            'pix_qr_code_image_url' => $venda->getAttribute('pix_qr_code_image_url')
+                ?: ($venda->pix_qr_code ? 'https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=' . urlencode($venda->pix_qr_code) : null),
+            'pix_manual' => $venda->forma_pagamento === 'PIX' && blank($venda->mercado_pago_payment_id),
             'mercado_pago_status' => $venda->mercado_pago_status,
             'itens' => $venda->itens->map(fn($item) => [
                 'descricao' => $item->descricao,

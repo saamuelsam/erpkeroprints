@@ -118,6 +118,36 @@ class ProdutoController extends Controller
         }
     }
 
+    public function ajustarEstoque(Request $request, Produto $produto)
+    {
+        $validated = $request->validate([
+            'quantidade_estoque' => ['required', 'numeric', 'min:0'],
+            'motivo'             => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $estoqueAtual = (float) $produto->quantidade_estoque;
+        $novoEstoque = (float) $validated['quantidade_estoque'];
+        $diferenca = round($novoEstoque - $estoqueAtual, 3);
+
+        if ($diferenca == 0.0) {
+            return back()->with('sucesso', 'Estoque mantido sem alterações.');
+        }
+
+        try {
+            $this->estoqueService->movimentar(
+                produto: $produto,
+                tipo: $diferenca > 0 ? 'ENTRADA_AJUSTE' : 'SAIDA_AJUSTE',
+                quantidade: abs($diferenca),
+                custoUnitario: (float) $produto->custo_unitario,
+                extras: ['motivo' => $validated['motivo'] ?? 'Correção manual de estoque']
+            );
+
+            return back()->with('sucesso', 'Estoque ajustado com sucesso!');
+        } catch (\Exception $e) {
+            return back()->with('erro', $e->getMessage());
+        }
+    }
+
     /**
      * Busca produto por código de barras/nome — usado no PDV
      */

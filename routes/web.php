@@ -43,6 +43,8 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('produtos', ProdutoController::class);
     Route::post('produtos/{produto}/entrada-estoque', [ProdutoController::class, 'entradaEstoque'])
          ->name('produtos.entrada-estoque');
+    Route::patch('produtos/{produto}/ajustar-estoque', [ProdutoController::class, 'ajustarEstoque'])
+         ->name('produtos.ajustar-estoque');
 
     // ── API interna ───────────────────────────────────────────────────────────
     Route::get('/api/produtos/buscar', [ProdutoController::class, 'buscarApi'])
@@ -62,6 +64,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('vendas/cliente', [VendaController::class, 'cliente'])->name('vendas.cliente');
     Route::post('vendas', [VendaController::class, 'store'])->name('vendas.store');
     Route::post('vendas/{venda}/consultar-pagamento', [VendaController::class, 'consultarPagamento'])->name('vendas.consultar-pagamento');
+    Route::post('vendas/{venda}/confirmar-manual', [VendaController::class, 'confirmarManual'])->name('vendas.confirmar-manual');
     Route::post('vendas/{venda}/cancelar', [VendaController::class, 'cancelar'])->name('vendas.cancelar');
     Route::get('vendas', [VendaController::class, 'index'])->name('vendas.index');
 

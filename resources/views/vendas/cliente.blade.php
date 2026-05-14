@@ -212,6 +212,14 @@
             return;
         }
 
+        if (venda?.forma_pagamento === 'PIX' && venda?.pix_qr_code_image_url) {
+            pix.style.display = 'block';
+            document.getElementById('pixImg').src = venda.pix_qr_code_image_url;
+            document.getElementById('pixStatus').textContent = venda.status_label || 'Aguardando pagamento';
+            document.getElementById('pixCode').textContent = venda.pix_qr_code || '';
+            return;
+        }
+
         pix.style.display = 'none';
         document.getElementById('pixImg').removeAttribute('src');
         document.getElementById('pixCode').textContent = '';

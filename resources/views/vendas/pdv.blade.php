@@ -136,6 +136,9 @@
                 <button type="button" class="btn btn-outline-primary w-100 mt-2" id="btnConsultarPix">
                     <i class="fa-solid fa-rotate me-1"></i>Consultar pagamento
                 </button>
+                <button type="button" class="btn btn-success w-100 mt-2" id="btnConfirmarPixManual" style="display:none">
+                    <i class="fa-solid fa-check me-1"></i>Confirmar Pix manual
+                </button>
             </div>
         </div>
     </div>
@@ -324,9 +327,11 @@ document.getElementById('btnLimpar').addEventListener('click', () => {
 clienteId.addEventListener('change', () => {
     const selected = clienteId.options[clienteId.selectedIndex];
     if (selected?.dataset.email) payerEmail.value = selected.dataset.email;
+    publicarCliente();
 });
 
 [descontoInput, formaPagamento].forEach(el => el.addEventListener('input', renderCarrinho));
+[descontoInput, formaPagamento].forEach(el => el.addEventListener('change', renderCarrinho));
 
 document.getElementById('btnFinalizar').addEventListener('click', () => {
     if (!carrinho.length) {
@@ -377,7 +382,11 @@ function mostrarPix(venda) {
     document.getElementById('pixBox').style.display = venda.forma_pagamento === 'PIX' ? 'block' : 'none';
     document.getElementById('pixStatus').textContent = venda.status_label;
     document.getElementById('pixCopiaCola').value = venda.pix_qr_code || '';
-    document.getElementById('pixQrImage').src = venda.pix_qr_code_base64 ? `data:image/png;base64,${venda.pix_qr_code_base64}` : '';
+    document.getElementById('pixQrImage').src = venda.pix_qr_code_base64
+        ? `data:image/png;base64,${venda.pix_qr_code_base64}`
+        : (venda.pix_qr_code_image_url || '');
+    document.getElementById('btnConsultarPix').style.display = venda.pix_manual ? 'none' : 'block';
+    document.getElementById('btnConfirmarPixManual').style.display = venda.pix_manual ? 'block' : 'none';
     publicarCliente();
 }
 
@@ -407,6 +416,24 @@ function consultarPix() {
 }
 
 document.getElementById('btnConsultarPix').addEventListener('click', consultarPix);
+document.getElementById('btnConfirmarPixManual').addEventListener('click', () => {
+    if (!vendaAtual?.id || !confirm('Confirmar que o Pix caiu na conta?')) return;
+
+    fetch(`/vendas/${vendaAtual.id}/confirmar-manual`, {
+        method: 'POST',
+        headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+    })
+    .then(async response => {
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.message || 'Erro ao confirmar Pix.');
+        vendaAtual = data.venda;
+        mostrarPix(vendaAtual);
+        publicarCliente();
+        alert(data.message);
+        novaVenda();
+    })
+    .catch(error => alert(error.message));
+});
 
 function novaVenda() {
     carrinho = [];
@@ -420,6 +447,7 @@ function novaVenda() {
 window.addEventListener('load', () => {
     scanInput.focus();
     renderCarrinho();
+    setInterval(() => publicarCliente(), 1000);
 });
 </script>
 @endpush
