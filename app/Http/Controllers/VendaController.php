@@ -8,6 +8,7 @@ use App\Services\MercadoPagoPixService;
 use App\Services\PixManualService;
 use App\Services\VendaService;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class VendaController extends Controller
 {
@@ -130,6 +131,11 @@ class VendaController extends Controller
                 'pix_confirmacao_pagador' => ['required', 'string', 'max:150'],
                 'pix_confirmacao_observacao' => ['nullable', 'string', 'max:500'],
                 'confirmou_extrato' => ['accepted'],
+            ], [
+                'pix_confirmacao_referencia.required' => 'Informe o codigo ou autenticacao do comprovante Pix.',
+                'pix_confirmacao_referencia.min' => 'O codigo/autenticacao do comprovante precisa ter pelo menos 4 caracteres.',
+                'pix_confirmacao_pagador.required' => 'Informe o nome de quem pagou o Pix.',
+                'confirmou_extrato.accepted' => 'Marque a confirmacao de que o Pix entrou no extrato/app do banco.',
             ]);
 
             $venda = $this->vendaService->confirmarPagamentoManual($venda, $validated);
@@ -138,6 +144,11 @@ class VendaController extends Controller
                 'venda' => $this->formatarVenda($venda),
                 'message' => 'Pagamento manual conferido e venda finalizada.',
             ]);
+        } catch (ValidationException $e) {
+            return response()->json([
+                'message' => collect($e->errors())->flatten()->first() ?: 'Confira os dados da confirmacao do Pix.',
+                'errors' => $e->errors(),
+            ], 422);
         } catch (\Exception $e) {
             return response()->json(['message' => $e->getMessage()], 422);
         }

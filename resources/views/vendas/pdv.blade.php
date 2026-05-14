@@ -155,20 +155,21 @@
                 <div class="alert alert-warning small">
                     Confirme somente depois de conferir no aplicativo do banco que o valor caiu na chave Pix cadastrada.
                 </div>
+                <div class="alert alert-danger small d-none" id="pixManualErro"></div>
                 <div class="mb-3">
                     <label class="form-label fw-semibold">Nome de quem pagou</label>
-                    <input type="text" class="form-control" id="pixConfirmacaoPagador" maxlength="150" required>
+                    <input type="text" class="form-control" id="pixConfirmacaoPagador" name="pix_confirmacao_pagador" maxlength="150" required>
                 </div>
                 <div class="mb-3">
                     <label class="form-label fw-semibold">Codigo/autenticacao do comprovante</label>
-                    <input type="text" class="form-control" id="pixConfirmacaoReferencia" minlength="4" maxlength="120" required>
+                    <input type="text" class="form-control" id="pixConfirmacaoReferencia" name="pix_confirmacao_referencia" minlength="4" maxlength="120" required>
                 </div>
                 <div class="mb-3">
                     <label class="form-label fw-semibold">Observacao</label>
-                    <textarea class="form-control" id="pixConfirmacaoObservacao" rows="2" maxlength="500" placeholder="Ex.: conferido no app do banco, valor e horario batem."></textarea>
+                    <textarea class="form-control" id="pixConfirmacaoObservacao" name="pix_confirmacao_observacao" rows="2" maxlength="500" placeholder="Ex.: conferido no app do banco, valor e horario batem."></textarea>
                 </div>
                 <div class="form-check">
-                    <input class="form-check-input" type="checkbox" id="pixConfirmouExtrato" required>
+                    <input class="form-check-input" type="checkbox" id="pixConfirmouExtrato" name="confirmou_extrato" value="1" required>
                     <label class="form-check-label" for="pixConfirmouExtrato">
                         Conferi no extrato/app bancario que o Pix entrou e o valor bate com a venda.
                     </label>
@@ -205,6 +206,7 @@ const payerEmail = document.getElementById('payerEmail');
 const pixManualForm = document.getElementById('pixManualForm');
 const pixManualModalEl = document.getElementById('pixManualModal');
 const pixManualModal = pixManualModalEl ? new bootstrap.Modal(pixManualModalEl) : null;
+const pixManualErro = document.getElementById('pixManualErro');
 
 function dinheiro(valor) {
     return 'R$ ' + Number(valor || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
@@ -462,12 +464,27 @@ document.getElementById('btnConsultarPix').addEventListener('click', consultarPi
 document.getElementById('btnConfirmarPixManual').addEventListener('click', () => {
     if (!vendaAtual?.id) return;
     pixManualForm?.reset();
+    pixManualErro?.classList.add('d-none');
     pixManualModal?.show();
 });
 
 pixManualForm?.addEventListener('submit', event => {
     event.preventDefault();
     if (!vendaAtual?.id) return;
+
+    pixManualErro?.classList.add('d-none');
+
+    if (!pixManualForm.checkValidity()) {
+        pixManualForm.reportValidity();
+        return;
+    }
+
+    const payload = {
+        pix_confirmacao_pagador: document.getElementById('pixConfirmacaoPagador').value.trim(),
+        pix_confirmacao_referencia: document.getElementById('pixConfirmacaoReferencia').value.trim(),
+        pix_confirmacao_observacao: document.getElementById('pixConfirmacaoObservacao').value.trim(),
+        confirmou_extrato: document.getElementById('pixConfirmouExtrato').checked ? '1' : '',
+    };
 
     const btn = document.getElementById('btnSalvarConfirmacaoPix');
     btn.disabled = true;
@@ -480,16 +497,14 @@ pixManualForm?.addEventListener('submit', event => {
             'Accept': 'application/json',
             'X-CSRF-TOKEN': csrfToken,
         },
-        body: JSON.stringify({
-            pix_confirmacao_pagador: document.getElementById('pixConfirmacaoPagador').value,
-            pix_confirmacao_referencia: document.getElementById('pixConfirmacaoReferencia').value,
-            pix_confirmacao_observacao: document.getElementById('pixConfirmacaoObservacao').value,
-            confirmou_extrato: document.getElementById('pixConfirmouExtrato').checked ? '1' : '',
-        }),
+        body: JSON.stringify(payload),
     })
     .then(async response => {
         const data = await response.json();
-        if (!response.ok) throw new Error(data.message || 'Erro ao confirmar Pix.');
+        if (!response.ok) {
+            const erros = data.errors ? Object.values(data.errors).flat() : [];
+            throw new Error(erros.join('\n') || data.message || 'Erro ao confirmar Pix.');
+        }
         vendaAtual = data.venda;
         pixManualModal?.hide();
         mostrarPix(vendaAtual);
@@ -497,7 +512,14 @@ pixManualForm?.addEventListener('submit', event => {
         alert(data.message);
         novaVenda();
     })
-    .catch(error => alert(error.message))
+    .catch(error => {
+        if (pixManualErro) {
+            pixManualErro.textContent = error.message;
+            pixManualErro.classList.remove('d-none');
+        } else {
+            alert(error.message);
+        }
+    })
     .finally(() => {
         btn.disabled = false;
         btn.innerHTML = '<i class="fa-solid fa-check me-1"></i>Confirmar pagamento';
