@@ -28,6 +28,11 @@
             background: #020617;
         }
 
+        .brand-logo {
+            max-height: 78px;
+            width: auto;
+        }
+
         .total {
             color: var(--green);
             font-size: clamp(3rem, 7vw, 6rem);
@@ -112,10 +117,7 @@
 </head>
 <body>
     <header class="brand-bar p-4 d-flex justify-content-between align-items-center">
-        <div>
-            <h1 class="h2 mb-0 fw-bold">Kero Prints</h1>
-            <div class="muted">Gráfica e Papelaria</div>
-        </div>
+        <img src="{{ asset('images/logo-white.png') }}" alt="Kero Prints Gráfica e Papelaria" class="brand-logo">
         <div class="text-end">
             <div class="muted fs-5">Total da compra</div>
             <div class="total" id="total">R$ 0,00</div>
@@ -183,6 +185,15 @@
     <script>
     const canal = 'BroadcastChannel' in window ? new BroadcastChannel('kero-pdv-cliente') : null;
     const dinheiro = valor => 'R$ ' + Number(valor || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+    let barcodeBuffer = '';
+    let barcodeTimer = null;
+
+    function enviarLeituraCliente() {
+        const codigo = barcodeBuffer.trim();
+        barcodeBuffer = '';
+        if (codigo.length < 2) return;
+        canal?.postMessage({ type: 'barcode-scan', codigo });
+    }
 
     function atualizarStatus(venda) {
         const statusVenda = document.getElementById('statusVenda');
@@ -249,6 +260,22 @@
 
         atualizarStatus(data.venda);
         atualizarPix(data.venda);
+    });
+
+    window.addEventListener('keydown', event => {
+        if (event.ctrlKey || event.altKey || event.metaKey) return;
+
+        if (event.key === 'Enter') {
+            enviarLeituraCliente();
+            event.preventDefault();
+            return;
+        }
+
+        if (event.key.length !== 1) return;
+
+        barcodeBuffer += event.key;
+        clearTimeout(barcodeTimer);
+        barcodeTimer = setTimeout(enviarLeituraCliente, 120);
     });
     </script>
 </body>

@@ -127,15 +127,12 @@ class VendaController extends Controller
             }
 
             $validated = $request->validate([
-                'pix_confirmacao_referencia' => ['required', 'string', 'min:4', 'max:120'],
-                'pix_confirmacao_pagador' => ['required', 'string', 'max:150'],
+                'pix_confirmacao_referencia' => ['nullable', 'string', 'min:4', 'max:120'],
+                'pix_confirmacao_pagador' => ['nullable', 'string', 'max:150'],
                 'pix_confirmacao_observacao' => ['nullable', 'string', 'max:500'],
-                'confirmou_extrato' => ['accepted'],
+                'confirmou_extrato' => ['nullable', 'boolean'],
             ], [
-                'pix_confirmacao_referencia.required' => 'Informe o codigo ou autenticacao do comprovante Pix.',
                 'pix_confirmacao_referencia.min' => 'O codigo/autenticacao do comprovante precisa ter pelo menos 4 caracteres.',
-                'pix_confirmacao_pagador.required' => 'Informe o nome de quem pagou o Pix.',
-                'confirmou_extrato.accepted' => 'Marque a confirmacao de que o Pix entrou no extrato/app do banco.',
             ]);
 
             $venda = $this->vendaService->confirmarPagamentoManual($venda, $validated);

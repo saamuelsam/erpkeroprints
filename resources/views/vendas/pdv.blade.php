@@ -11,15 +11,43 @@
     .pdv-scan-input { font-size: 1.2rem; height: 54px; }
     .pdv-item-active { background: #FFFBEA; }
     .pix-box img { max-width: 260px; width: 100%; }
+    .pdv-brand-logo { max-height: 56px; width: auto; }
+    .pdv-toast-stack {
+        position: fixed;
+        right: 22px;
+        top: 22px;
+        z-index: 1080;
+        display: grid;
+        gap: 10px;
+        width: min(360px, calc(100vw - 32px));
+    }
+    .pdv-toast {
+        background: #111827;
+        border-left: 5px solid #FFD000;
+        border-radius: 10px;
+        box-shadow: 0 18px 45px rgba(15, 23, 42, .24);
+        color: #fff;
+        padding: 14px 16px;
+        animation: toastIn .18s ease-out;
+    }
+    .pdv-toast.success { border-left-color: #22C55E; }
+    .pdv-toast.error { border-left-color: #EF4444; }
+    .pdv-toast.warning { border-left-color: #F59E0B; }
+    .pdv-toast-title { font-weight: 800; margin-bottom: 2px; }
+    .pdv-toast-message { color: #CBD5E1; font-size: .9rem; white-space: pre-line; }
+    @keyframes toastIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
     @media (max-width: 992px) { .pdv-shell { grid-template-columns: 1fr; } }
 </style>
 @endpush
 
 @section('content')
 <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-    <div>
-        <h4 class="mb-0 fw-bold">Venda rápida</h4>
-        <p class="text-muted mb-0 small">Leitor de código, carrinho e pagamento em uma tela</p>
+    <div class="d-flex align-items-center gap-3">
+        <img src="{{ asset('images/logo-color.png') }}" alt="Kero Prints Gráfica e Papelaria" class="pdv-brand-logo">
+        <div>
+            <h4 class="mb-0 fw-bold">Venda rápida</h4>
+            <p class="text-muted mb-0 small">Leitor de código, carrinho e pagamento em uma tela</p>
+        </div>
     </div>
     <div class="d-flex gap-2">
         <a href="{{ route('vendas.index') }}" class="btn btn-outline-secondary">
@@ -30,6 +58,8 @@
         </a>
     </div>
 </div>
+
+<div class="pdv-toast-stack" id="pdvToastStack" aria-live="polite" aria-atomic="true"></div>
 
 <div class="pdv-shell">
     <div class="d-flex flex-column gap-3">
@@ -153,23 +183,23 @@
             </div>
             <div class="modal-body">
                 <div class="alert alert-warning small">
-                    Confirme somente depois de conferir no aplicativo do banco que o valor caiu na chave Pix cadastrada.
+                    Confirme somente depois de conferir no aplicativo do banco que o valor caiu na chave Pix cadastrada. Os campos abaixo são opcionais.
                 </div>
                 <div class="alert alert-danger small d-none" id="pixManualErro"></div>
                 <div class="mb-3">
                     <label class="form-label fw-semibold">Nome de quem pagou</label>
-                    <input type="text" class="form-control" id="pixConfirmacaoPagador" name="pix_confirmacao_pagador" maxlength="150" required>
+                    <input type="text" class="form-control" id="pixConfirmacaoPagador" name="pix_confirmacao_pagador" maxlength="150">
                 </div>
                 <div class="mb-3">
                     <label class="form-label fw-semibold">Codigo/autenticacao do comprovante</label>
-                    <input type="text" class="form-control" id="pixConfirmacaoReferencia" name="pix_confirmacao_referencia" minlength="4" maxlength="120" required>
+                    <input type="text" class="form-control" id="pixConfirmacaoReferencia" name="pix_confirmacao_referencia" minlength="4" maxlength="120">
                 </div>
                 <div class="mb-3">
                     <label class="form-label fw-semibold">Observacao</label>
                     <textarea class="form-control" id="pixConfirmacaoObservacao" name="pix_confirmacao_observacao" rows="2" maxlength="500" placeholder="Ex.: conferido no app do banco, valor e horario batem."></textarea>
                 </div>
                 <div class="form-check">
-                    <input class="form-check-input" type="checkbox" id="pixConfirmouExtrato" name="confirmou_extrato" value="1" required>
+                    <input class="form-check-input" type="checkbox" id="pixConfirmouExtrato" name="confirmou_extrato" value="1">
                     <label class="form-check-label" for="pixConfirmouExtrato">
                         Conferi no extrato/app bancario que o Pix entrou e o valor bate com a venda.
                     </label>
@@ -207,9 +237,25 @@ const pixManualForm = document.getElementById('pixManualForm');
 const pixManualModalEl = document.getElementById('pixManualModal');
 const pixManualModal = pixManualModalEl ? new bootstrap.Modal(pixManualModalEl) : null;
 const pixManualErro = document.getElementById('pixManualErro');
+const pdvToastStack = document.getElementById('pdvToastStack');
+let leituraTimer = null;
+let leituraEmAndamento = false;
+let ultimaLeituraProcessada = { codigo: '', momento: 0 };
 
 function dinheiro(valor) {
     return 'R$ ' + Number(valor || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+}
+
+function notificar(tipo, titulo, mensagem) {
+    const toast = document.createElement('div');
+    toast.className = `pdv-toast ${tipo || ''}`;
+    toast.innerHTML = `<div class="pdv-toast-title">${titulo}</div><div class="pdv-toast-message">${mensagem || ''}</div>`;
+    pdvToastStack.appendChild(toast);
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(-8px)';
+        setTimeout(() => toast.remove(), 220);
+    }, 4200);
 }
 
 function normalizarLeitura(valor) {
@@ -255,6 +301,8 @@ function adicionarProduto(produto) {
     resultadoBusca.style.display = 'none';
     renderCarrinho();
     scanInput.focus();
+    scanInput.select();
+    notificar('success', 'Produto adicionado', `${produto.nome} entrou no carrinho.`);
 }
 
 function renderResultados(produtos) {
@@ -341,24 +389,71 @@ scanInput.addEventListener('input', () => {
     const q = normalizarLeitura(scanInput.value);
     if (q.length < 2) { resultadoBusca.style.display = 'none'; return; }
     clearTimeout(window.buscaTimer);
-    window.buscaTimer = setTimeout(() => buscarProdutos(q).then(renderResultados), 250);
+    clearTimeout(leituraTimer);
+    leituraTimer = setTimeout(() => processarLeituraOuBusca(q), 180);
 });
 
 scanInput.addEventListener('keydown', event => {
     if (event.key !== 'Enter') return;
     event.preventDefault();
-    const q = normalizarLeitura(scanInput.value);
-    if (!q) return;
-    buscarProdutos(q, true)
-        .then(produtos => produtos.length ? produtos : buscarProdutos(q))
-        .then(produtos => {
-            if (produtos.length === 1) adicionarProduto(produtos[0]);
-            else renderResultados(produtos);
-        });
+    clearTimeout(leituraTimer);
+    processarLeituraOuBusca(scanInput.value, true);
 });
 
 document.getElementById('btnBuscarProduto').addEventListener('click', () => {
     buscarProdutos(scanInput.value).then(renderResultados);
+});
+
+function limparLeitura() {
+    scanInput.value = '';
+    resultadoBusca.style.display = 'none';
+    scanInput.focus();
+}
+
+function leituraDuplicada(codigo) {
+    const agora = Date.now();
+    return ultimaLeituraProcessada.codigo === codigo && agora - ultimaLeituraProcessada.momento < 900;
+}
+
+function marcarLeitura(codigo) {
+    ultimaLeituraProcessada = { codigo, momento: Date.now() };
+}
+
+function processarLeituraOuBusca(valor, forcarExato = false) {
+    const q = normalizarLeitura(valor);
+    if (!q || leituraEmAndamento || leituraDuplicada(q)) return;
+
+    leituraEmAndamento = true;
+
+    buscarProdutos(q, true)
+        .then(produtos => {
+            if (produtos.length === 1) {
+                marcarLeitura(q);
+                adicionarProduto(produtos[0]);
+                return null;
+            }
+
+            if (forcarExato) {
+                limparLeitura();
+                notificar('warning', 'Produto não encontrado', `Nenhum produto com o código ${q}.`);
+                return null;
+            }
+
+            return buscarProdutos(q);
+        })
+        .then(produtos => {
+            if (produtos) renderResultados(produtos);
+        })
+        .catch(() => notificar('error', 'Falha na leitura', 'Não foi possível buscar o produto agora.'))
+        .finally(() => {
+            leituraEmAndamento = false;
+        });
+}
+
+canalCliente?.addEventListener('message', event => {
+    const data = event.data || {};
+    if (data.type !== 'barcode-scan' || !data.codigo) return;
+    processarLeituraOuBusca(data.codigo, true);
 });
 
 document.getElementById('btnLimpar').addEventListener('click', () => {
@@ -380,7 +475,7 @@ clienteId.addEventListener('change', () => {
 
 document.getElementById('btnFinalizar').addEventListener('click', () => {
     if (!carrinho.length) {
-        alert('Adicione pelo menos um produto.');
+        notificar('warning', 'Carrinho vazio', 'Adicione pelo menos um produto para finalizar.');
         return;
     }
 
@@ -416,11 +511,11 @@ document.getElementById('btnFinalizar').addEventListener('click', () => {
         if (vendaAtual.forma_pagamento === 'PIX') {
             iniciarConsultaPix();
         } else {
-            alert(data.message);
+            notificar('success', 'Venda finalizada', data.message);
             novaVenda();
         }
     })
-    .catch(error => alert(error.message));
+    .catch(error => notificar('error', 'Erro ao finalizar', error.message));
 });
 
 function mostrarPix(venda) {
@@ -454,7 +549,7 @@ function consultarPix() {
         publicarCliente();
         if (vendaAtual.status === 'PAGA') {
             clearInterval(consultaTimer);
-            alert('Pagamento aprovado. Venda finalizada!');
+            notificar('success', 'Pagamento aprovado', 'Venda finalizada com sucesso.');
             novaVenda();
         }
     });
@@ -474,16 +569,11 @@ pixManualForm?.addEventListener('submit', event => {
 
     pixManualErro?.classList.add('d-none');
 
-    if (!pixManualForm.checkValidity()) {
-        pixManualForm.reportValidity();
-        return;
-    }
-
     const payload = {
         pix_confirmacao_pagador: document.getElementById('pixConfirmacaoPagador').value.trim(),
         pix_confirmacao_referencia: document.getElementById('pixConfirmacaoReferencia').value.trim(),
         pix_confirmacao_observacao: document.getElementById('pixConfirmacaoObservacao').value.trim(),
-        confirmou_extrato: document.getElementById('pixConfirmouExtrato').checked ? '1' : '',
+        confirmou_extrato: document.getElementById('pixConfirmouExtrato').checked ? '1' : '0',
     };
 
     const btn = document.getElementById('btnSalvarConfirmacaoPix');
@@ -509,7 +599,7 @@ pixManualForm?.addEventListener('submit', event => {
         pixManualModal?.hide();
         mostrarPix(vendaAtual);
         publicarCliente();
-        alert(data.message);
+        notificar('success', 'Pix confirmado', data.message);
         novaVenda();
     })
     .catch(error => {
@@ -517,7 +607,7 @@ pixManualForm?.addEventListener('submit', event => {
             pixManualErro.textContent = error.message;
             pixManualErro.classList.remove('d-none');
         } else {
-            alert(error.message);
+            notificar('error', 'Erro ao confirmar Pix', error.message);
         }
     })
     .finally(() => {

@@ -4,6 +4,10 @@
 @section('page-title', "Documento {$documento->numero}")
 
 @section('content')
+<div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-3">
+    <img src="{{ asset('images/logo-color.png') }}" alt="Kero Prints Gráfica e Papelaria" style="max-height:54px;width:auto">
+</div>
+
 <div class="d-flex align-items-center mb-4 gap-3 flex-wrap">
     <a href="{{ route('financeiro.documentos.index') }}" class="btn btn-sm btn-outline-secondary">
         <i class="fa-solid fa-arrow-left me-1"></i>Voltar

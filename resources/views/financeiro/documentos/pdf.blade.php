@@ -10,6 +10,7 @@
         .header { background: #FFD000; color: #111; padding: 30px 40px; display: table; width: 100%; }
         .header-left { display: table-cell; vertical-align: middle; width: 60%; }
         .header-right { display: table-cell; vertical-align: middle; width: 40%; text-align: right; }
+        .logo { max-width: 190px; max-height: 70px; display: block; margin-bottom: 8px; }
         .header h1 { font-size: 22px; margin-bottom: 5px; font-weight: 800; }
         .header h1 .kero { color: #EC008C; }
         .header p { font-size: 11px; opacity: 0.7; }
@@ -44,11 +45,20 @@
     </style>
 </head>
 <body>
+    @php
+        $logoPath = public_path('images/logo-color.png');
+        $logoBase64 = file_exists($logoPath) ? 'data:image/png;base64,' . base64_encode(file_get_contents($logoPath)) : null;
+    @endphp
+
     {{-- Cabeçalho --}}
     <div class="header">
         <div class="header-left">
-            <h1><span class="kero">Kero</span> Prints</h1>
-            <p>Gráfica e Papelaria</p>
+            @if($logoBase64)
+                <img src="{{ $logoBase64 }}" alt="Kero Prints Gráfica e Papelaria" class="logo">
+            @else
+                <h1><span class="kero">Kero</span> Prints</h1>
+                <p>Gráfica e Papelaria</p>
+            @endif
         </div>
         <div class="header-right">
             <div class="doc-tipo">{{ $documento->tipo_label }}</div>

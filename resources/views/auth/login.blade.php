@@ -87,10 +87,36 @@
             font-size: 0.9rem;
         }
 
+        .input-wrap .toggle-password {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            border: 0;
+            background: transparent;
+            color: #94A3B8;
+            cursor: pointer;
+            height: 34px;
+            width: 34px;
+            border-radius: 8px;
+        }
+
+        .input-wrap .toggle-password:hover {
+            background: rgba(255,255,255,0.08);
+            color: #FFD000;
+        }
+
+        .input-wrap .toggle-password i {
+            position: static;
+            transform: none;
+            color: inherit;
+        }
+
         input[type="email"],
-        input[type="password"] {
+        input[type="password"],
+        input[type="text"] {
             width: 100%;
-            padding: 12px 14px 12px 42px;
+            padding: 12px 46px 12px 42px;
             background: rgba(255,255,255,0.06);
             border: 1px solid rgba(255,255,255,0.12);
             border-radius: 10px;
@@ -235,6 +261,9 @@
                     <i class="fa-solid fa-lock"></i>
                     <input type="password" id="password" name="password"
                            placeholder="••••••••" required autocomplete="current-password">
+                    <button type="button" class="toggle-password" id="togglePassword" aria-label="Mostrar senha">
+                        <i class="fa-solid fa-eye"></i>
+                    </button>
                 </div>
             </div>
 
@@ -252,5 +281,19 @@
             Kero Prints Gráfica e Papelaria &copy; {{ date('Y') }} — Acesso restrito
         </div>
     </div>
+    <script>
+        const passwordInput = document.getElementById('password');
+        const togglePassword = document.getElementById('togglePassword');
+
+        togglePassword?.addEventListener('click', () => {
+            const mostrando = passwordInput.type === 'text';
+            passwordInput.type = mostrando ? 'password' : 'text';
+            togglePassword.setAttribute('aria-label', mostrando ? 'Mostrar senha' : 'Ocultar senha');
+            togglePassword.innerHTML = mostrando
+                ? '<i class="fa-solid fa-eye"></i>'
+                : '<i class="fa-solid fa-eye-slash"></i>';
+            passwordInput.focus();
+        });
+    </script>
 </body>
 </html>

@@ -108,8 +108,8 @@ class VendaService
                 'mercado_pago_status' => 'manual_pix_confirmed',
                 'pix_confirmado_por' => Auth::id(),
                 'pix_confirmado_em' => now(),
-                'pix_confirmacao_referencia' => $dados['pix_confirmacao_referencia'],
-                'pix_confirmacao_pagador' => $dados['pix_confirmacao_pagador'],
+                'pix_confirmacao_referencia' => $dados['pix_confirmacao_referencia'] ?? null,
+                'pix_confirmacao_pagador' => $dados['pix_confirmacao_pagador'] ?? null,
                 'pix_confirmacao_observacao' => $dados['pix_confirmacao_observacao'] ?? null,
             ]);
 
