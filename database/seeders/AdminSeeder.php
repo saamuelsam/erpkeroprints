@@ -10,12 +10,12 @@ class AdminSeeder extends Seeder
 {
     public function run(): void
     {
-        User::firstOrCreate(
-            ['email' => 'admin@keroprints.local'],
+        User::updateOrCreate(
+            ['email' => 'keroprints@.com'],
             [
                 'name'     => 'Administrador',
-                'email'    => 'admin@keroprints.local',
-                'password' => Hash::make('Admin@12345'),
+                'email'    => 'keroprints@.com',
+                'password' => Hash::make('Keroprints@77'),
             ]
         );
     }

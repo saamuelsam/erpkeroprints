@@ -247,11 +247,11 @@
             @csrf
 
             <div class="form-group">
-                <label for="email">E-mail</label>
+                <label for="email">Login</label>
                 <div class="input-wrap">
                     <i class="fa-solid fa-envelope"></i>
-                    <input type="email" id="email" name="email" value="{{ old('email') }}"
-                           placeholder="seu@email.com" required autofocus autocomplete="email">
+                    <input type="text" id="email" name="email" value="{{ old('email') }}"
+                           placeholder="keroprints@.com" required autofocus autocomplete="username">
                 </div>
             </div>
 

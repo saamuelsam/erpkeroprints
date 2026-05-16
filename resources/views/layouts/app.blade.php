@@ -56,6 +56,10 @@
             transition: transform 0.3s ease;
         }
 
+        body.sidebar-hidden .sidebar {
+            transform: translateX(-100%);
+        }
+
         .sidebar-brand {
             padding: 16px 16px 14px;
             border-bottom: 1px solid rgba(255,208,0,0.15);
@@ -134,6 +138,7 @@
             padding: 0 24px;
             z-index: 999;
             gap: 16px;
+            transition: left 0.3s ease;
         }
 
         .topbar .page-title {
@@ -149,6 +154,27 @@
             margin-top: var(--topbar-height);
             padding: 24px;
             min-height: calc(100vh - var(--topbar-height));
+            transition: margin-left 0.3s ease;
+        }
+
+        body.sidebar-hidden .topbar {
+            left: 0;
+        }
+
+        body.sidebar-hidden .main-content {
+            margin-left: 0;
+        }
+
+        .sidebar-submenu .nav-link {
+            font-size: .82rem;
+            padding-left: 34px;
+        }
+
+        .sidebar-toggle {
+            align-items: center;
+            display: inline-flex;
+            justify-content: center;
+            width: 34px;
         }
 
         /* ── Cards ───────────────────────────────────────── */
@@ -213,9 +239,24 @@
         <a href="{{ route('clientes.index') }}" class="nav-link {{ request()->routeIs('clientes.*') ? 'active' : '' }}">
             <i class="fa-solid fa-users"></i> Clientes
         </a>
-        <a href="{{ route('categorias.index') }}" class="nav-link {{ request()->routeIs('categorias.*') ? 'active' : '' }}">
+        @php($menuCategorias = \App\Models\Categoria::ativas()->orderBy('nome')->get(['id', 'nome']))
+        <a class="nav-link {{ request()->routeIs('categorias.*') || request()->routeIs('produtos.*') && request('categoria_id') ? '' : 'collapsed' }}"
+           data-bs-toggle="collapse" href="#menuCategorias" role="button"
+           aria-expanded="{{ request()->routeIs('categorias.*') || request()->routeIs('produtos.*') && request('categoria_id') ? 'true' : 'false' }}">
             <i class="fa-solid fa-tags"></i> Categorias
+            <i class="fa-solid fa-chevron-down ms-auto" style="font-size:.6rem"></i>
         </a>
+        <div class="collapse sidebar-submenu {{ request()->routeIs('categorias.*') || request()->routeIs('produtos.*') && request('categoria_id') ? 'show' : '' }}" id="menuCategorias">
+            <a href="{{ route('categorias.index') }}" class="nav-link {{ request()->routeIs('categorias.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-gear"></i> Gerenciar categorias
+            </a>
+            @foreach($menuCategorias as $menuCategoria)
+                <a href="{{ route('produtos.index', ['categoria_id' => $menuCategoria->id]) }}"
+                   class="nav-link {{ request()->routeIs('produtos.index') && (string) request('categoria_id') === (string) $menuCategoria->id ? 'active' : '' }}">
+                    <i class="fa-regular fa-folder"></i> {{ $menuCategoria->nome }}
+                </a>
+            @endforeach
+        </div>
         <a href="{{ route('produtos.index') }}" class="nav-link {{ request()->routeIs('produtos.*') ? 'active' : '' }}">
             <i class="fa-solid fa-box"></i> Produtos
         </a>
@@ -270,7 +311,7 @@
 
 <!-- ══════════════════ TOPBAR ══════════════════ -->
 <div class="topbar">
-    <button class="btn btn-sm btn-outline-secondary d-md-none" onclick="document.getElementById('sidebar').classList.toggle('show')">
+    <button class="btn btn-sm btn-outline-secondary sidebar-toggle" id="sidebarToggle" type="button">
         <i class="fa-solid fa-bars"></i>
     </button>
     <div class="page-title">@yield('page-title', 'Dashboard')</div>
@@ -310,6 +351,24 @@
 
 <!-- Auto-dismiss flash messages após 4s -->
 <script>
+    const sidebarToggle = document.getElementById('sidebarToggle');
+    const sidebar = document.getElementById('sidebar');
+    const sidebarStorageKey = 'kero-sidebar-hidden';
+
+    if (window.innerWidth > 768 && localStorage.getItem(sidebarStorageKey) === '1') {
+        document.body.classList.add('sidebar-hidden');
+    }
+
+    sidebarToggle?.addEventListener('click', () => {
+        if (window.innerWidth <= 768) {
+            sidebar?.classList.toggle('show');
+            return;
+        }
+
+        document.body.classList.toggle('sidebar-hidden');
+        localStorage.setItem(sidebarStorageKey, document.body.classList.contains('sidebar-hidden') ? '1' : '0');
+    });
+
     setTimeout(() => {
         document.querySelectorAll('.flash-messages .alert').forEach(el => {
             const bsAlert = bootstrap.Alert.getOrCreateInstance(el);

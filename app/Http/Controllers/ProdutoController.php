@@ -16,7 +16,7 @@ class ProdutoController extends Controller
 
     public function index(Request $request)
     {
-        $query = Produto::with('categoria', 'subcategoria');
+        $query = Produto::with('categoria');
 
         if ($busca = $request->input('busca')) {
             $query->busca($busca);
@@ -35,7 +35,7 @@ class ProdutoController extends Controller
         }
 
         $produtos    = $query->orderBy('nome')->paginate(20)->withQueryString();
-        $categorias  = Categoria::ativas()->with('subcategorias')->orderBy('nome')->get();
+        $categorias  = Categoria::ativas()->orderBy('nome')->get();
         $totalEstoqueBaixo = Produto::ativos()->estoqueBaixo()->count();
 
         return view('produtos.index', compact('produtos', 'categorias', 'totalEstoqueBaixo'));
@@ -43,7 +43,7 @@ class ProdutoController extends Controller
 
     public function create()
     {
-        $categorias = Categoria::ativas()->with(['subcategorias' => fn($q) => $q->ativas()])->orderBy('nome')->get();
+        $categorias = Categoria::ativas()->orderBy('nome')->get();
         return view('produtos.form', ['produto' => new Produto(), 'categorias' => $categorias]);
     }
 
@@ -64,14 +64,14 @@ class ProdutoController extends Controller
 
     public function show(Produto $produto)
     {
-        $produto->load(['categoria', 'subcategoria', 'movimentacoes.usuario']);
+        $produto->load(['categoria', 'movimentacoes.usuario']);
         $movimentacoes = $produto->movimentacoes()->paginate(15);
         return view('produtos.show', compact('produto', 'movimentacoes'));
     }
 
     public function edit(Produto $produto)
     {
-        $categorias = Categoria::ativas()->with(['subcategorias' => fn($q) => $q->ativas()])->orderBy('nome')->get();
+        $categorias = Categoria::ativas()->orderBy('nome')->get();
         return view('produtos.form', compact('produto', 'categorias'));
     }
 

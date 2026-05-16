@@ -97,12 +97,7 @@
                                     <small class="text-muted">Cód: {{ $produto->codigo_interno }}</small>
                                 @endif
                             </td>
-                                <td class="text-muted small">
-                                    <div>{{ $produto->categoria->nome }}</div>
-                                    @if($produto->subcategoria)
-                                        <div class="text-body-secondary">{{ $produto->subcategoria->nome }}</div>
-                                    @endif
-                                </td>
+                                <td class="text-muted small">{{ $produto->categoria->nome }}</td>
                             <td class="text-end fw-semibold {{ $produto->isEstoqueBaixo() ? 'text-danger' : '' }}">
                                 {{ number_format($produto->quantidade_estoque, 2, ',', '.') }}
                                 <small class="text-muted">{{ $produto->unidade_medida }}</small>

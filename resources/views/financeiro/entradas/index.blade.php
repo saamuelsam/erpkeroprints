@@ -44,7 +44,7 @@
 </div>
 
 {{-- Card de total --}}
-<div class="row mb-4">
+<div class="row mb-4 align-items-start">
     <div class="col-12 col-md-4">
         <div class="card border-start border-success border-4">
             <div class="card-body py-3 d-flex align-items-center gap-3">
@@ -58,26 +58,29 @@
             </div>
         </div>
     </div>
-    <div class="col-12 col-lg-8 mt-3 mt-lg-0">
-        <div class="card h-100">
-            <div class="card-body py-3">
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                    <div class="fw-semibold">Produtos vendidos no filtro</div>
-                    <span class="text-muted small">Top 8 por quantidade</span>
+    <div class="col-12 col-md-auto mt-3 mt-md-0">
+        <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#produtosVendidosResumo">
+            <i class="fa-solid fa-chart-simple me-1"></i>Produtos vendidos
+        </button>
+    </div>
+</div>
+
+<div class="collapse mb-4" id="produtosVendidosResumo">
+    <div class="card">
+        <div class="card-body py-2">
+            @if($produtosVendidosFiltro->isEmpty())
+                <div class="text-muted small">Nenhuma venda de produto encontrada neste filtro.</div>
+            @else
+                <div class="d-flex flex-wrap gap-2 align-items-center small">
+                    <span class="text-muted me-1">Top vendidos:</span>
+                    @foreach($produtosVendidosFiltro->take(5) as $produtoVendido)
+                        <span class="badge text-bg-light border">
+                            {{ $produtoVendido->descricao }}
+                            <strong class="ms-1">{{ number_format($produtoVendido->quantidade_total, 3, ',', '.') }}</strong>
+                        </span>
+                    @endforeach
                 </div>
-                @if($produtosVendidosFiltro->isEmpty())
-                    <div class="text-muted small">Nenhuma venda de produto encontrada neste filtro.</div>
-                @else
-                    <div class="d-flex flex-wrap gap-2">
-                        @foreach($produtosVendidosFiltro as $produtoVendido)
-                            <span class="badge text-bg-light border px-3 py-2">
-                                {{ $produtoVendido->descricao }}
-                                <strong class="ms-1">{{ number_format($produtoVendido->quantidade_total, 3, ',', '.') }}</strong>
-                            </span>
-                        @endforeach
-                    </div>
-                @endif
-            </div>
+            @endif
         </div>
     </div>
 </div>

@@ -16,7 +16,6 @@ class Produto extends Model
         'codigo_barras',
         'nome',
         'categoria_id',
-        'subcategoria_id',
         'quantidade_estoque',
         'custo_unitario',
         'preco_venda',
@@ -39,11 +38,6 @@ class Produto extends Model
     public function categoria(): BelongsTo
     {
         return $this->belongsTo(Categoria::class);
-    }
-
-    public function subcategoria(): BelongsTo
-    {
-        return $this->belongsTo(Subcategoria::class);
     }
 
     public function movimentacoes(): HasMany
