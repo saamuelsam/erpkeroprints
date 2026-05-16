@@ -58,4 +58,55 @@
         @endif
     </div>
 </div>
+
+<div class="modal fade" id="modalExcluirCategoria" tabindex="-1" aria-labelledby="modalExcluirCategoriaLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header border-0 pb-0">
+                <div>
+                    <h5 class="modal-title fw-bold" id="modalExcluirCategoriaLabel">Excluir categoria</h5>
+                    <div class="text-muted small">Essa acao reorganiza os itens vinculados automaticamente.</div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body">
+                <div class="d-flex gap-3 align-items-start">
+                    <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                         style="width:42px;height:42px;background:rgba(220,53,69,.12);color:#dc3545;">
+                        <i class="fa-solid fa-trash"></i>
+                    </div>
+                    <div>
+                        <div class="fw-semibold mb-1">Deseja excluir <span id="categoriaExcluirNome"></span>?</div>
+                        <div class="text-muted small">
+                            Produtos dessa categoria serao movidos para a categoria pai ou para <strong>Sem categoria</strong>.
+                            Categorias internas sobem um nivel na arvore.
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <form method="POST" id="formExcluirCategoria">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fa-solid fa-trash me-1"></i>Excluir categoria
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
 @endsection
+
+@push('scripts')
+<script>
+const modalExcluirCategoria = document.getElementById('modalExcluirCategoria');
+
+modalExcluirCategoria?.addEventListener('show.bs.modal', event => {
+    const botao = event.relatedTarget;
+    document.getElementById('categoriaExcluirNome').textContent = botao.dataset.categoria;
+    document.getElementById('formExcluirCategoria').action = botao.dataset.action;
+});
+</script>
+@endpush
