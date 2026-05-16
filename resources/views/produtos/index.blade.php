@@ -97,7 +97,12 @@
                                     <small class="text-muted">Cód: {{ $produto->codigo_interno }}</small>
                                 @endif
                             </td>
-                            <td class="text-muted small">{{ $produto->categoria->nome }}</td>
+                                <td class="text-muted small">
+                                    <div>{{ $produto->categoria->nome }}</div>
+                                    @if($produto->subcategoria)
+                                        <div class="text-body-secondary">{{ $produto->subcategoria->nome }}</div>
+                                    @endif
+                                </td>
                             <td class="text-end fw-semibold {{ $produto->isEstoqueBaixo() ? 'text-danger' : '' }}">
                                 {{ number_format($produto->quantidade_estoque, 2, ',', '.') }}
                                 <small class="text-muted">{{ $produto->unidade_medida }}</small>
@@ -184,6 +189,10 @@ async function buscarProdutosAoVivo(urlDestino = null) {
 
         produtosResultado.innerHTML = novoResultado.innerHTML;
         window.history.replaceState({}, '', url);
+
+        if (/^\d{6,}$/.test(produtoBuscaInput.value.trim())) {
+            produtoBuscaInput.select();
+        }
     } catch (error) {
         if (error.name !== 'AbortError') {
             console.error(error);
@@ -196,6 +205,21 @@ async function buscarProdutosAoVivo(urlDestino = null) {
 produtoBuscaInput?.addEventListener('input', () => {
     clearTimeout(produtoFiltroTimer);
     produtoFiltroTimer = setTimeout(() => buscarProdutosAoVivo(), 350);
+});
+
+produtoBuscaInput?.addEventListener('keydown', event => {
+    if (event.key !== 'Enter') return;
+    event.preventDefault();
+    clearTimeout(produtoFiltroTimer);
+    buscarProdutosAoVivo().then(() => {
+        produtoBuscaInput.select();
+    });
+});
+
+produtoBuscaInput?.addEventListener('focus', () => {
+    if (produtoBuscaInput.value.trim()) {
+        produtoBuscaInput.select();
+    }
 });
 
 produtoFiltroForm?.addEventListener('submit', event => {

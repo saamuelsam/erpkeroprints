@@ -75,6 +75,11 @@ class FinanceiroEntrada extends Model
         return $this->morphTo('origem', 'origem_tipo', 'origem_id');
     }
 
+    public function vendaOrigem(): BelongsTo
+    {
+        return $this->belongsTo(Venda::class, 'origem_id');
+    }
+
     // ─── Scopes ────────────────────────────────────────────────────────────────
 
     public function scopePeriodo($query, $inicio, $fim)

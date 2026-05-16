@@ -58,6 +58,28 @@
             </div>
         </div>
     </div>
+    <div class="col-12 col-lg-8 mt-3 mt-lg-0">
+        <div class="card h-100">
+            <div class="card-body py-3">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div class="fw-semibold">Produtos vendidos no filtro</div>
+                    <span class="text-muted small">Top 8 por quantidade</span>
+                </div>
+                @if($produtosVendidosFiltro->isEmpty())
+                    <div class="text-muted small">Nenhuma venda de produto encontrada neste filtro.</div>
+                @else
+                    <div class="d-flex flex-wrap gap-2">
+                        @foreach($produtosVendidosFiltro as $produtoVendido)
+                            <span class="badge text-bg-light border px-3 py-2">
+                                {{ $produtoVendido->descricao }}
+                                <strong class="ms-1">{{ number_format($produtoVendido->quantidade_total, 3, ',', '.') }}</strong>
+                            </span>
+                        @endforeach
+                    </div>
+                @endif
+            </div>
+        </div>
+    </div>
 </div>
 
 {{-- Tabela --}}
@@ -75,6 +97,7 @@
                     <thead class="table-light">
                         <tr>
                             <th>Data</th>
+                            <th>Hora</th>
                             <th>Descrição</th>
                             <th>Categoria</th>
                             <th>Pagamento</th>
@@ -86,8 +109,12 @@
                     </thead>
                     <tbody>
                         @foreach($entradas as $entrada)
+                        @php
+                            $venda = $entrada->origem_tipo === 'venda' ? $entrada->vendaOrigem : null;
+                        @endphp
                         <tr>
                             <td class="text-muted small">{{ $entrada->data->format('d/m/Y') }}</td>
+                            <td class="text-muted small">{{ $venda?->created_at?->format('H:i') ?? '—' }}</td>
                             <td>
                                 {{ $entrada->descricao }}
                                 @if($entrada->origem_tipo)
@@ -100,7 +127,14 @@
                             <td class="text-end fw-semibold text-success">R$ {{ number_format($entrada->valor, 2, ',', '.') }}</td>
                             <td><span class="badge bg-{{ $entrada->status_badge }}">{{ $entrada->status_label }}</span></td>
                             <td class="text-end">
-                                @if(!$entrada->origem_tipo)
+                                @if($venda)
+                                    <button class="btn btn-sm btn-outline-primary" type="button"
+                                            data-bs-toggle="collapse" data-bs-target="#vendaItens{{ $entrada->id }}"
+                                            aria-expanded="false" aria-controls="vendaItens{{ $entrada->id }}"
+                                            title="Ver produtos vendidos">
+                                        <i class="fa-solid fa-receipt"></i>
+                                    </button>
+                                @elseif(!$entrada->origem_tipo)
                                 <div class="d-flex gap-1 justify-content-end">
                                     <a href="{{ route('financeiro.entradas.edit', $entrada) }}" class="btn btn-sm btn-outline-secondary" title="Editar">
                                         <i class="fa-solid fa-pen"></i>
@@ -115,6 +149,53 @@
                                 @endif
                             </td>
                         </tr>
+                        @if($venda)
+                        <tr class="collapse bg-light" id="vendaItens{{ $entrada->id }}">
+                            <td colspan="9" class="p-0">
+                                <div class="p-3">
+                                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+                                        <div>
+                                            <div class="fw-semibold">Produtos vendidos em {{ $venda->numero }}</div>
+                                            <div class="text-muted small">
+                                                Venda feita em {{ $venda->created_at->format('d/m/Y H:i') }}
+                                                @if($venda->pago_em)
+                                                    | paga em {{ $venda->pago_em->format('d/m/Y H:i') }}
+                                                @endif
+                                            </div>
+                                        </div>
+                                        <span class="badge bg-success-subtle text-success">
+                                            {{ $venda->itens->count() }} item(ns)
+                                        </span>
+                                    </div>
+                                    <div class="table-responsive">
+                                        <table class="table table-sm mb-0 align-middle">
+                                            <thead>
+                                                <tr>
+                                                    <th>Produto</th>
+                                                    <th class="text-end">Qtd</th>
+                                                    <th class="text-end">Unitário</th>
+                                                    <th class="text-end">Total</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach($venda->itens as $item)
+                                                <tr>
+                                                    <td>
+                                                        <div class="fw-semibold">{{ $item->descricao }}</div>
+                                                        <small class="text-muted">{{ $item->produto->codigo_barras ?? $item->produto->codigo_interno ?? 'Produto avulso' }}</small>
+                                                    </td>
+                                                    <td class="text-end">{{ number_format($item->quantidade, 3, ',', '.') }}</td>
+                                                    <td class="text-end">R$ {{ number_format($item->preco_unitario, 2, ',', '.') }}</td>
+                                                    <td class="text-end fw-semibold">R$ {{ number_format($item->total_item, 2, ',', '.') }}</td>
+                                                </tr>
+                                                @endforeach
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                        @endif
                         @endforeach
                     </tbody>
                 </table>

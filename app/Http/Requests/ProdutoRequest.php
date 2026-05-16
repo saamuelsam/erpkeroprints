@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class ProdutoRequest extends FormRequest
 {
@@ -18,6 +19,10 @@ class ProdutoRequest extends FormRequest
         return [
             'nome'               => ['required', 'string', 'max:150'],
             'categoria_id'       => ['required', 'exists:categorias,id'],
+            'subcategoria_id'    => [
+                'nullable',
+                Rule::exists('subcategorias', 'id')->where(fn($query) => $query->where('categoria_id', $this->input('categoria_id'))),
+            ],
             'codigo_interno'     => [
                 'nullable', 'string', 'max:50',
                 "unique:produtos,codigo_interno,{$produtoId},id,deleted_at,NULL",

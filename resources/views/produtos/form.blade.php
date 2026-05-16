@@ -32,7 +32,7 @@
 
                         <div class="col-12 col-md-6">
                             <label class="form-label fw-semibold">Categoria <span class="text-danger">*</span></label>
-                            <select name="categoria_id" class="form-select @error('categoria_id') is-invalid @enderror">
+                            <select name="categoria_id" id="categoria_id" class="form-select @error('categoria_id') is-invalid @enderror">
                                 <option value="">Selecione...</option>
                                 @foreach($categorias as $cat)
                                     <option value="{{ $cat->id }}" {{ old('categoria_id', $produto->categoria_id) == $cat->id ? 'selected' : '' }}>
@@ -41,6 +41,14 @@
                                 @endforeach
                             </select>
                             @error('categoria_id') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                        </div>
+
+                        <div class="col-12 col-md-6">
+                            <label class="form-label fw-semibold">Subcategoria</label>
+                            <select name="subcategoria_id" id="subcategoria_id" class="form-select @error('subcategoria_id') is-invalid @enderror">
+                                <option value="">Sem subcategoria</option>
+                            </select>
+                            @error('subcategoria_id') <div class="invalid-feedback">{{ $message }}</div> @enderror
                         </div>
 
                         <div class="col-12 col-md-3">
@@ -167,5 +175,31 @@ function calcLucro() {
 document.getElementById('custo_unitario')?.addEventListener('input', calcLucro);
 document.getElementById('preco_venda')?.addEventListener('input', calcLucro);
 calcLucro();
+
+const subcategoriasPorCategoria = @json($categorias->mapWithKeys(fn($categoria) => [
+    $categoria->id => $categoria->subcategorias->map(fn($subcategoria) => [
+        'id' => $subcategoria->id,
+        'nome' => $subcategoria->nome,
+    ])->values(),
+]));
+const categoriaSelect = document.getElementById('categoria_id');
+const subcategoriaSelect = document.getElementById('subcategoria_id');
+const subcategoriaSelecionada = '{{ old('subcategoria_id', $produto->subcategoria_id) }}';
+
+function atualizarSubcategorias() {
+    const opcoes = subcategoriasPorCategoria[categoriaSelect.value] || [];
+    subcategoriaSelect.innerHTML = '<option value="">Sem subcategoria</option>';
+
+    opcoes.forEach(subcategoria => {
+        const option = document.createElement('option');
+        option.value = subcategoria.id;
+        option.textContent = subcategoria.nome;
+        option.selected = String(subcategoria.id) === String(subcategoriaSelecionada);
+        subcategoriaSelect.appendChild(option);
+    });
+}
+
+categoriaSelect?.addEventListener('change', atualizarSubcategorias);
+atualizarSubcategorias();
 </script>
 @endpush

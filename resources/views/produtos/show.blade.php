@@ -67,7 +67,12 @@
             <div class="card-body">
                 <div class="text-muted small mb-1">Valor em Estoque</div>
                 <div class="fw-bold fs-3">R$ {{ number_format($produto->valor_em_estoque, 2, ',', '.') }}</div>
-                <div class="text-muted small">{{ $produto->categoria->nome }}</div>
+                <div class="text-muted small">
+                    {{ $produto->categoria->nome }}
+                    @if($produto->subcategoria)
+                        / {{ $produto->subcategoria->nome }}
+                    @endif
+                </div>
             </div>
         </div>
     </div>

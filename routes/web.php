@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\ClienteController;
 use App\Http\Controllers\CategoriaController;
+use App\Http\Controllers\SubcategoriaController;
 use App\Http\Controllers\ProdutoController;
 use App\Http\Controllers\OrdemServicoController;
 use App\Http\Controllers\VendaController;
@@ -38,6 +39,12 @@ Route::middleware(['auth'])->group(function () {
 
     // ── Categorias ────────────────────────────────────────────────────────────
     Route::resource('categorias', CategoriaController::class)->except(['show']);
+    Route::post('categorias/{categoria}/subcategorias', [SubcategoriaController::class, 'store'])
+         ->name('categorias.subcategorias.store');
+    Route::put('categorias/{categoria}/subcategorias/{subcategoria}', [SubcategoriaController::class, 'update'])
+         ->name('categorias.subcategorias.update');
+    Route::delete('categorias/{categoria}/subcategorias/{subcategoria}', [SubcategoriaController::class, 'destroy'])
+         ->name('categorias.subcategorias.destroy');
 
     // ── Produtos ──────────────────────────────────────────────────────────────
     Route::resource('produtos', ProdutoController::class);

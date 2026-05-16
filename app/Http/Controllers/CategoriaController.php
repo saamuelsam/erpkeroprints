@@ -10,7 +10,8 @@ class CategoriaController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Categoria::withCount('produtos');
+        $query = Categoria::with(['subcategorias' => fn($q) => $q->withCount('produtos')])
+            ->withCount('produtos');
 
         if ($busca = $request->input('busca')) {
             $query->where('nome', 'like', "%{$busca}%");

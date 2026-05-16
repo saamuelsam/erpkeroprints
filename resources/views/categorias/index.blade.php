@@ -51,7 +51,13 @@
                     <tbody>
                         @foreach($categorias as $categoria)
                         <tr>
-                            <td class="fw-semibold">{{ $categoria->nome }}</td>
+                            <td class="fw-semibold">
+                                <button class="btn btn-sm btn-link text-decoration-none px-0" type="button"
+                                        data-bs-toggle="collapse" data-bs-target="#subcategorias{{ $categoria->id }}"
+                                        aria-expanded="false" aria-controls="subcategorias{{ $categoria->id }}">
+                                    <i class="fa-solid fa-chevron-down me-2"></i>{{ $categoria->nome }}
+                                </button>
+                            </td>
                             <td class="text-muted">{{ $categoria->descricao ?: '—' }}</td>
                             <td class="text-center">
                                 <span class="badge bg-primary-subtle text-primary rounded-pill">{{ $categoria->produtos_count }}</span>
@@ -76,6 +82,95 @@
                                             <i class="fa-solid fa-trash"></i>
                                         </button>
                                     </form>
+                                    @endif
+                                </div>
+                            </td>
+                        </tr>
+                        <tr class="collapse bg-light" id="subcategorias{{ $categoria->id }}">
+                            <td colspan="5" class="p-0">
+                                <div class="p-3">
+                                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+                                        <div>
+                                            <div class="fw-semibold">Subcategorias de {{ $categoria->nome }}</div>
+                                            <div class="text-muted small">Organize linhas como grafica, papelaria, tecnologia ou designer grafico.</div>
+                                        </div>
+                                    </div>
+
+                                    <form method="POST" action="{{ route('categorias.subcategorias.store', $categoria) }}" class="row g-2 align-items-end mb-3">
+                                        @csrf
+                                        <div class="col-12 col-md-4">
+                                            <label class="form-label small fw-semibold">Nova subcategoria</label>
+                                            <input type="text" name="nome" class="form-control" placeholder="Ex.: Papelaria" required>
+                                        </div>
+                                        <div class="col-12 col-md-5">
+                                            <label class="form-label small fw-semibold">Descricao</label>
+                                            <input type="text" name="descricao" class="form-control" placeholder="Opcional">
+                                        </div>
+                                        <div class="col-auto">
+                                            <input type="hidden" name="ativo" value="1">
+                                            <button class="btn btn-primary"><i class="fa-solid fa-plus me-1"></i>Adicionar</button>
+                                        </div>
+                                    </form>
+
+                                    @if($categoria->subcategorias->isEmpty())
+                                        <div class="text-muted small">Nenhuma subcategoria cadastrada.</div>
+                                    @else
+                                        <div class="table-responsive">
+                                            <table class="table table-sm align-middle mb-0">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Nome</th>
+                                                        <th>Descricao</th>
+                                                        <th class="text-center">Produtos</th>
+                                                        <th class="text-center">Status</th>
+                                                        <th class="text-end">Acoes</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    @foreach($categoria->subcategorias as $subcategoria)
+                                                    <tr>
+                                                        <td>
+                                                            <input type="text" name="nome" value="{{ $subcategoria->nome }}"
+                                                                   form="subcategoriaForm{{ $subcategoria->id }}" class="form-control form-control-sm" required>
+                                                        </td>
+                                                        <td>
+                                                            <input type="text" name="descricao" value="{{ $subcategoria->descricao }}"
+                                                                   form="subcategoriaForm{{ $subcategoria->id }}" class="form-control form-control-sm">
+                                                        </td>
+                                                        <td class="text-center">
+                                                            <span class="badge bg-primary-subtle text-primary rounded-pill">{{ $subcategoria->produtos_count }}</span>
+                                                        </td>
+                                                        <td class="text-center">
+                                                            <div class="form-check form-switch d-inline-flex">
+                                                                <input type="hidden" name="ativo" value="0" form="subcategoriaForm{{ $subcategoria->id }}">
+                                                                <input class="form-check-input" type="checkbox" name="ativo" value="1"
+                                                                       form="subcategoriaForm{{ $subcategoria->id }}" {{ $subcategoria->ativo ? 'checked' : '' }}>
+                                                            </div>
+                                                        </td>
+                                                        <td class="text-end">
+                                                            <div class="d-flex gap-1 justify-content-end">
+                                                                <form id="subcategoriaForm{{ $subcategoria->id }}" method="POST" action="{{ route('categorias.subcategorias.update', [$categoria, $subcategoria]) }}">
+                                                                    @csrf @method('PUT')
+                                                                </form>
+                                                                <button class="btn btn-sm btn-outline-secondary" title="Salvar" form="subcategoriaForm{{ $subcategoria->id }}">
+                                                                    <i class="fa-solid fa-floppy-disk"></i>
+                                                                </button>
+                                                                @if($subcategoria->produtos_count === 0)
+                                                                <form method="POST" action="{{ route('categorias.subcategorias.destroy', [$categoria, $subcategoria]) }}"
+                                                                      onsubmit="return confirm('Confirmar exclusao de {{ $subcategoria->nome }}?')">
+                                                                    @csrf @method('DELETE')
+                                                                    <button class="btn btn-sm btn-outline-danger" title="Excluir">
+                                                                        <i class="fa-solid fa-trash"></i>
+                                                                    </button>
+                                                                </form>
+                                                                @endif
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                    @endforeach
+                                                </tbody>
+                                            </table>
+                                        </div>
                                     @endif
                                 </div>
                             </td>

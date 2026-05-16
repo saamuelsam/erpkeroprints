@@ -24,6 +24,11 @@ class Categoria extends Model
         return $this->hasMany(Produto::class);
     }
 
+    public function subcategorias(): HasMany
+    {
+        return $this->hasMany(Subcategoria::class)->orderBy('nome');
+    }
+
     // ─── Scopes ────────────────────────────────────────────────────────────────
 
     public function scopeAtivas($query)

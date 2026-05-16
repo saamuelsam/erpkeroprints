@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\FinanceiroEntradaRequest;
 use App\Models\Cliente;
 use App\Models\FinanceiroEntrada;
+use App\Models\VendaItem;
 use App\Services\CaixaService;
 use Illuminate\Http\Request;
 
@@ -17,7 +18,7 @@ class EntradaController extends Controller
 
     public function index(Request $request)
     {
-        $query = FinanceiroEntrada::with('cliente', 'responsavel');
+        $query = FinanceiroEntrada::with('cliente', 'responsavel', 'vendaOrigem.itens.produto');
 
         if ($busca = $request->input('busca')) {
             $query->busca($busca);
@@ -39,13 +40,25 @@ class EntradaController extends Controller
             $query->whereDate('data', '<=', $dataFim);
         }
 
+        $vendaIdsFiltro = (clone $query)
+            ->where('origem_tipo', 'venda')
+            ->pluck('origem_id');
+
+        $produtosVendidosFiltro = VendaItem::query()
+            ->selectRaw('descricao, SUM(quantidade) as quantidade_total, SUM(total_item) as valor_total')
+            ->whereIn('venda_id', $vendaIdsFiltro)
+            ->groupBy('descricao')
+            ->orderByDesc('quantidade_total')
+            ->limit(8)
+            ->get();
+
         $entradas   = $query->latest('data')->paginate(20)->withQueryString();
         $categorias = FinanceiroEntrada::CATEGORIAS;
 
         // Totais do filtro atual
         $totalFiltro = (clone $query)->sum('valor');
 
-        return view('financeiro.entradas.index', compact('entradas', 'categorias', 'totalFiltro'));
+        return view('financeiro.entradas.index', compact('entradas', 'categorias', 'totalFiltro', 'produtosVendidosFiltro'));
     }
 
     public function create()
