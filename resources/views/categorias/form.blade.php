@@ -29,6 +29,20 @@
                     </div>
 
                     <div class="mb-3">
+                        <label class="form-label fw-semibold">Categoria pai</label>
+                        <select name="parent_id" class="form-select">
+                            <option value="">Nenhuma, categoria principal</option>
+                            @foreach($categoriasPai as $categoriaPai)
+                                <option value="{{ $categoriaPai->id }}"
+                                    {{ (string) old('parent_id', $categoria->parent_id ?? request('parent_id')) === (string) $categoriaPai->id ? 'selected' : '' }}>
+                                    {{ $categoriaPai->nome_completo }}
+                                </option>
+                            @endforeach
+                        </select>
+                        <div class="form-text">Escolha uma categoria pai para criar quantos niveis internos quiser.</div>
+                    </div>
+
+                    <div class="mb-3">
                         <label class="form-label fw-semibold">Descrição</label>
                         <textarea name="descricao" class="form-control" rows="3"
                                   placeholder="Descrição opcional da categoria...">{{ old('descricao', $categoria->descricao) }}</textarea>

@@ -23,7 +23,9 @@ class ProdutoController extends Controller
         }
 
         if ($categoriaId = $request->input('categoria_id')) {
-            $query->where('categoria_id', $categoriaId);
+            $categoria = Categoria::with('childrenRecursive')->find($categoriaId);
+            $categoriaIds = $categoria ? array_merge([$categoria->id], $categoria->descendantIds()) : [$categoriaId];
+            $query->whereIn('categoria_id', $categoriaIds);
         }
 
         if ($request->input('apenas_ativos') !== '0') {
@@ -35,7 +37,7 @@ class ProdutoController extends Controller
         }
 
         $produtos    = $query->orderBy('nome')->paginate(20)->withQueryString();
-        $categorias  = Categoria::ativas()->orderBy('nome')->get();
+        $categorias  = Categoria::ativas()->with('parent')->orderBy('nome')->get();
         $totalEstoqueBaixo = Produto::ativos()->estoqueBaixo()->count();
 
         return view('produtos.index', compact('produtos', 'categorias', 'totalEstoqueBaixo'));
@@ -43,7 +45,7 @@ class ProdutoController extends Controller
 
     public function create()
     {
-        $categorias = Categoria::ativas()->orderBy('nome')->get();
+        $categorias = Categoria::ativas()->with('parent')->orderBy('nome')->get();
         return view('produtos.form', ['produto' => new Produto(), 'categorias' => $categorias]);
     }
 
@@ -71,7 +73,7 @@ class ProdutoController extends Controller
 
     public function edit(Produto $produto)
     {
-        $categorias = Categoria::ativas()->orderBy('nome')->get();
+        $categorias = Categoria::ativas()->with('parent')->orderBy('nome')->get();
         return view('produtos.form', compact('produto', 'categorias'));
     }
 

@@ -239,7 +239,16 @@
         <a href="{{ route('clientes.index') }}" class="nav-link {{ request()->routeIs('clientes.*') ? 'active' : '' }}">
             <i class="fa-solid fa-users"></i> Clientes
         </a>
-        @php($menuCategorias = \App\Models\Categoria::ativas()->orderBy('nome')->get(['id', 'nome']))
+        @php
+            $todasCategoriasMenu = \App\Models\Categoria::ativas()->orderBy('nome')->get();
+            $montarArvoreMenu = function ($parentId = null) use (&$montarArvoreMenu, $todasCategoriasMenu) {
+                return $todasCategoriasMenu->where('parent_id', $parentId)->values()->map(function ($categoria) use (&$montarArvoreMenu) {
+                    $categoria->setRelation('children', $montarArvoreMenu($categoria->id));
+                    return $categoria;
+                });
+            };
+            $menuCategorias = $montarArvoreMenu();
+        @endphp
         <a class="nav-link {{ request()->routeIs('categorias.*') || request()->routeIs('produtos.*') && request('categoria_id') ? '' : 'collapsed' }}"
            data-bs-toggle="collapse" href="#menuCategorias" role="button"
            aria-expanded="{{ request()->routeIs('categorias.*') || request()->routeIs('produtos.*') && request('categoria_id') ? 'true' : 'false' }}">
@@ -250,12 +259,7 @@
             <a href="{{ route('categorias.index') }}" class="nav-link {{ request()->routeIs('categorias.*') ? 'active' : '' }}">
                 <i class="fa-solid fa-gear"></i> Gerenciar categorias
             </a>
-            @foreach($menuCategorias as $menuCategoria)
-                <a href="{{ route('produtos.index', ['categoria_id' => $menuCategoria->id]) }}"
-                   class="nav-link {{ request()->routeIs('produtos.index') && (string) request('categoria_id') === (string) $menuCategoria->id ? 'active' : '' }}">
-                    <i class="fa-regular fa-folder"></i> {{ $menuCategoria->nome }}
-                </a>
-            @endforeach
+            @include('layouts._category_menu', ['categorias' => $menuCategorias, 'nivel' => 0])
         </div>
         <a href="{{ route('produtos.index') }}" class="nav-link {{ request()->routeIs('produtos.*') ? 'active' : '' }}">
             <i class="fa-solid fa-box"></i> Produtos

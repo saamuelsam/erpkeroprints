@@ -31,7 +31,7 @@
                     <option value="">Todas as categorias</option>
                     @foreach($categorias as $cat)
                         <option value="{{ $cat->id }}" {{ request('categoria_id') == $cat->id ? 'selected' : '' }}>
-                            {{ $cat->nome }}
+                            {{ $cat->nome_completo }}
                         </option>
                     @endforeach
                 </select>
