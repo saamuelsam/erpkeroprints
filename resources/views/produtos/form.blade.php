@@ -44,7 +44,7 @@
                         </div>
 
 
-                        <div class="col-12 col-md-3">
+                        <div class="col-12 col-md-3 estoque-controlado">
                             <label class="form-label fw-semibold">Unidade de Medida</label>
                             <select name="unidade_medida" class="form-select">
                                 @foreach(['UN' => 'Unidade', 'KG' => 'Quilograma', 'G' => 'Grama', 'M' => 'Metro', 'M2' => 'Metro²', 'L' => 'Litro', 'ML' => 'Mililitro', 'CX' => 'Caixa', 'PCT' => 'Pacote', 'RL' => 'Rolo'] as $val => $label)
@@ -55,7 +55,7 @@
                             </select>
                         </div>
 
-                        <div class="col-12 col-md-3">
+                        <div class="col-12 col-md-3 estoque-controlado">
                             <label class="form-label fw-semibold">Estoque Mínimo</label>
                             <input type="number" name="estoque_minimo" value="{{ old('estoque_minimo', $produto->estoque_minimo ?? 0) }}"
                                    class="form-control" step="0.001" min="0">
@@ -92,8 +92,14 @@
             <div class="card">
                 <div class="card-header"><i class="fa-solid fa-dollar-sign me-2"></i>Preços e Estoque</div>
                 <div class="card-body">
+                    <div class="form-check form-switch mb-3">
+                        <input type="hidden" name="controla_estoque" value="0">
+                        <input class="form-check-input" type="checkbox" name="controla_estoque" value="1" id="controla_estoque"
+                               {{ old('controla_estoque', $produto->controla_estoque ?? true) ? 'checked' : '' }}>
+                        <label class="form-check-label fw-semibold" for="controla_estoque">Controla quantidade em estoque</label>
+                    </div>
                     <div class="mb-3">
-                        <label class="form-label fw-semibold">Custo Unitário (R$) <span class="text-danger">*</span></label>
+                        <label class="form-label fw-semibold">Custo Unitário (R$)</label>
                         <div class="input-group">
                             <span class="input-group-text">R$</span>
                             <input type="number" name="custo_unitario" id="custo_unitario"
@@ -123,7 +129,7 @@
                     </div>
 
                     @if(!$produto->exists)
-                    <div class="mb-3">
+                    <div class="mb-3 estoque-controlado">
                         <label class="form-label fw-semibold">Quantidade Inicial</label>
                         <input type="number" name="quantidade_estoque" value="{{ old('quantidade_estoque', 0) }}"
                                class="form-control" step="0.001" min="0">
@@ -168,6 +174,16 @@ function calcLucro() {
 document.getElementById('custo_unitario')?.addEventListener('input', calcLucro);
 document.getElementById('preco_venda')?.addEventListener('input', calcLucro);
 calcLucro();
+
+const controlaEstoque = document.getElementById('controla_estoque');
+const camposEstoque = document.querySelectorAll('.estoque-controlado');
+
+function alternarCamposEstoque() {
+    camposEstoque.forEach(campo => campo.classList.toggle('d-none', !controlaEstoque.checked));
+}
+
+controlaEstoque?.addEventListener('change', alternarCamposEstoque);
+alternarCamposEstoque();
 
 </script>
 @endpush

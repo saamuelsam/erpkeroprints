@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Categoria;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class CategoriaController extends Controller
 {
@@ -79,11 +80,32 @@ class CategoriaController extends Controller
 
     public function destroy(Categoria $categoria)
     {
-        if ($categoria->produtos()->exists() || $categoria->children()->exists()) {
-            return back()->with('erro', 'Nao e possivel excluir uma categoria com produtos ou categorias internas vinculadas. Inative-a em vez disso.');
-        }
+        try {
+            DB::transaction(function () use ($categoria) {
+                $destinoId = $categoria->parent_id;
 
-        $categoria->delete();
+                if (!$destinoId) {
+                    $semCategoria = Categoria::firstOrCreate(
+                        ['nome' => 'Sem categoria', 'parent_id' => null],
+                        ['descricao' => 'Produtos sem categoria definida', 'ativo' => true]
+                    );
+
+                    if ($categoria->is($semCategoria)) {
+                        if ($categoria->produtos()->exists() || $categoria->children()->exists()) {
+                            throw new \RuntimeException('A categoria Sem categoria nao pode ser excluida enquanto estiver em uso.');
+                        }
+                    } else {
+                        $destinoId = $semCategoria->id;
+                    }
+                }
+
+                $categoria->produtos()->update(['categoria_id' => $destinoId]);
+                $categoria->children()->update(['parent_id' => $categoria->parent_id]);
+                $categoria->delete();
+            });
+        } catch (\RuntimeException $e) {
+            return back()->with('erro', $e->getMessage());
+        }
 
         return redirect()->route('categorias.index')
             ->with('sucesso', 'Categoria removida com sucesso!');

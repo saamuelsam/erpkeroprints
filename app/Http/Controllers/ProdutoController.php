@@ -52,6 +52,13 @@ class ProdutoController extends Controller
     public function store(ProdutoRequest $request)
     {
         $dados = $request->validated();
+        $dados['custo_unitario'] = $dados['custo_unitario'] ?? 0;
+        $dados['controla_estoque'] = (bool) ($dados['controla_estoque'] ?? false);
+
+        if (!$dados['controla_estoque']) {
+            $dados['quantidade_estoque'] = 0;
+            $dados['estoque_minimo'] = 0;
+        }
 
         // Gera código interno automático se não foi informado
         if (empty($dados['codigo_interno'])) {
@@ -79,7 +86,16 @@ class ProdutoController extends Controller
 
     public function update(ProdutoRequest $request, Produto $produto)
     {
-        $produto->update($request->validated());
+        $dados = $request->validated();
+        $dados['custo_unitario'] = $dados['custo_unitario'] ?? 0;
+        $dados['controla_estoque'] = (bool) ($dados['controla_estoque'] ?? false);
+
+        if (!$dados['controla_estoque']) {
+            $dados['quantidade_estoque'] = 0;
+            $dados['estoque_minimo'] = 0;
+        }
+
+        $produto->update($dados);
 
         return redirect()->route('produtos.index')
             ->with('sucesso', 'Produto atualizado com sucesso!');
@@ -98,6 +114,10 @@ class ProdutoController extends Controller
      */
     public function entradaEstoque(Request $request, Produto $produto)
     {
+        if (!$produto->controla_estoque) {
+            return back()->with('erro', 'Este produto nao controla estoque.');
+        }
+
         $validated = $request->validate([
             'quantidade'    => ['required', 'numeric', 'min:0.001'],
             'custo_unitario'=> ['required', 'numeric', 'min:0'],
@@ -122,6 +142,10 @@ class ProdutoController extends Controller
 
     public function ajustarEstoque(Request $request, Produto $produto)
     {
+        if (!$produto->controla_estoque) {
+            return back()->with('erro', 'Este produto nao controla estoque.');
+        }
+
         $validated = $request->validate([
             'quantidade_estoque' => ['required', 'numeric', 'min:0'],
             'motivo'             => ['nullable', 'string', 'max:255'],

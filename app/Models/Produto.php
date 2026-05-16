@@ -16,6 +16,7 @@ class Produto extends Model
         'codigo_barras',
         'nome',
         'categoria_id',
+        'controla_estoque',
         'quantidade_estoque',
         'custo_unitario',
         'preco_venda',
@@ -31,6 +32,7 @@ class Produto extends Model
         'preco_venda'        => 'decimal:2',
         'estoque_minimo'     => 'decimal:3',
         'ativo'              => 'boolean',
+        'controla_estoque'    => 'boolean',
     ];
 
     // ─── Relacionamentos ───────────────────────────────────────────────────────
@@ -54,7 +56,8 @@ class Produto extends Model
 
     public function scopeEstoqueBaixo($query)
     {
-        return $query->whereColumn('quantidade_estoque', '<=', 'estoque_minimo')
+        return $query->where('controla_estoque', true)
+                     ->whereColumn('quantidade_estoque', '<=', 'estoque_minimo')
                      ->where('estoque_minimo', '>', 0);
     }
 
@@ -89,7 +92,8 @@ class Produto extends Model
 
     public function isEstoqueBaixo(): bool
     {
-        return (float)$this->estoque_minimo > 0
+        return $this->controla_estoque
+            && (float)$this->estoque_minimo > 0
             && (float)$this->quantidade_estoque <= (float)$this->estoque_minimo;
     }
 }

@@ -99,8 +99,12 @@
                             </td>
                                 <td class="text-muted small">{{ $produto->categoria->nome }}</td>
                             <td class="text-end fw-semibold {{ $produto->isEstoqueBaixo() ? 'text-danger' : '' }}">
-                                {{ number_format($produto->quantidade_estoque, 2, ',', '.') }}
-                                <small class="text-muted">{{ $produto->unidade_medida }}</small>
+                                @if($produto->controla_estoque)
+                                    {{ number_format($produto->quantidade_estoque, 2, ',', '.') }}
+                                    <small class="text-muted">{{ $produto->unidade_medida }}</small>
+                                @else
+                                    <span class="text-muted small">Sem controle</span>
+                                @endif
                             </td>
                             <td class="text-end text-muted">R$ {{ number_format($produto->custo_unitario, 2, ',', '.') }}</td>
                             <td class="text-end fw-semibold">R$ {{ number_format($produto->preco_venda, 2, ',', '.') }}</td>

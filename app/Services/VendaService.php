@@ -136,6 +136,11 @@ class VendaService
                 }
 
                 $produto = Produto::findOrFail($item->produto_id);
+
+                if (!$produto->controla_estoque) {
+                    continue;
+                }
+
                 $this->estoqueService->movimentar(
                     produto: $produto,
                     tipo: 'SAIDA_VENDA',

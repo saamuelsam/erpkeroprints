@@ -16,12 +16,14 @@
         <a href="{{ route('produtos.edit', $produto) }}" class="btn btn-sm btn-outline-primary">
             <i class="fa-solid fa-pen me-1"></i>Editar
         </a>
+        @if($produto->controla_estoque)
         <button class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#modalEntrada">
             <i class="fa-solid fa-arrow-up me-1"></i>Entrada de Estoque
         </button>
         <button class="btn btn-sm btn-outline-warning" data-bs-toggle="modal" data-bs-target="#modalAjusteEstoque">
             <i class="fa-solid fa-scale-balanced me-1"></i>Ajustar Estoque
         </button>
+        @endif
     </div>
 </div>
 
@@ -31,11 +33,15 @@
         <div class="card text-center h-100">
             <div class="card-body">
                 <div class="text-muted small mb-1">Estoque Atual</div>
-                <div class="fw-bold fs-1 {{ $produto->isEstoqueBaixo() ? 'text-danger' : 'text-success' }}">
-                    {{ number_format($produto->quantidade_estoque, 2, ',', '.') }}
-                </div>
-                <div class="text-muted">{{ $produto->unidade_medida }}</div>
-                <div class="text-muted small mt-1">Mín: {{ number_format($produto->estoque_minimo, 2, ',', '.') }}</div>
+                @if($produto->controla_estoque)
+                    <div class="fw-bold fs-1 {{ $produto->isEstoqueBaixo() ? 'text-danger' : 'text-success' }}">
+                        {{ number_format($produto->quantidade_estoque, 2, ',', '.') }}
+                    </div>
+                    <div class="text-muted">{{ $produto->unidade_medida }}</div>
+                    <div class="text-muted small mt-1">Mín: {{ number_format($produto->estoque_minimo, 2, ',', '.') }}</div>
+                @else
+                    <div class="fw-bold fs-4 text-muted">Sem controle</div>
+                @endif
             </div>
         </div>
     </div>
