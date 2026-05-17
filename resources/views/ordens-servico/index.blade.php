@@ -84,7 +84,7 @@
                                     {{ $os->numero_os }}
                                 </a>
                             </td>
-                            <td>{{ $os->cliente->nome }}</td>
+                            <td>{{ $os->cliente?->nome ?? 'Consumidor final' }}</td>
                             <td class="text-muted small">{{ $os->data_abertura->format('d/m/Y') }}</td>
                             <td class="small {{ $os->data_prevista_entrega && $os->data_prevista_entrega->isPast() && !in_array($os->status, ['ENTREGUE','CANCELADA']) ? 'text-danger fw-bold' : 'text-muted' }}">
                                 {{ $os->data_prevista_entrega?->format('d/m/Y') ?? '—' }}

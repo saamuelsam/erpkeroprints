@@ -63,8 +63,8 @@
         <div class="card text-center">
             <div class="card-body">
                 <div class="text-muted small">Cliente</div>
-                <div class="fw-semibold">{{ $os->cliente->nome }}</div>
-                <div class="text-muted small">{{ $os->cliente->telefone_formatado }}</div>
+                <div class="fw-semibold">{{ $os->cliente?->nome ?? 'Consumidor final' }}</div>
+                <div class="text-muted small">{{ $os->cliente?->telefone_formatado ?? 'Venda avulsa' }}</div>
             </div>
         </div>
     </div>
@@ -83,7 +83,7 @@
         <div class="card h-100">
             <div class="card-header"><i class="fa-solid fa-file-alt me-2"></i>Detalhes do Serviço</div>
             <div class="card-body">
-                <p class="mb-3">{{ $os->descricao_servico }}</p>
+                <p class="mb-3">{{ $os->descricao_servico ?: 'Venda avulsa sem descrição detalhada.' }}</p>
 
                 @if($os->observacoes_internas)
                     <div class="alert alert-warning py-2 small">

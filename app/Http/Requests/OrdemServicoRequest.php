@@ -14,19 +14,19 @@ class OrdemServicoRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'cliente_id'             => ['required', 'exists:clientes,id'],
+            'acao'                   => ['nullable', 'in:salvar,pagar_agora'],
+            'cliente_id'             => ['nullable', 'exists:clientes,id'],
             'data_prevista_entrega'  => ['nullable', 'date', 'after_or_equal:today'],
-            'descricao_servico'      => ['required', 'string', 'max:5000'],
+            'descricao_servico'      => ['nullable', 'string', 'max:5000'],
             'observacoes_internas'   => ['nullable', 'string', 'max:2000'],
             'observacoes_cliente'    => ['nullable', 'string', 'max:2000'],
-            'valor_servico'          => ['required', 'numeric', 'min:0'],
+            'valor_servico'          => ['nullable', 'numeric', 'min:0'],
             'custos_adicionais'      => ['nullable', 'numeric', 'min:0'],
             'desconto'               => ['nullable', 'numeric', 'min:0'],
-            'forma_pagamento'        => ['nullable', 'string', 'max:50'],
+            'forma_pagamento'        => ['nullable', 'required_if:acao,pagar_agora', 'string', 'max:50'],
             'status'                 => ['nullable', 'in:ABERTA,PRODUCAO,AGUARDANDO_APROVACAO,FINALIZADA,ENTREGUE,CANCELADA'],
             'status_pagamento'       => ['nullable', 'in:PENDENTE,PAGO_PARCIAL,PAGO'],
 
-            // Itens da OS
             'itens'                  => ['nullable', 'array'],
             'itens.*.produto_id'     => ['nullable', 'exists:produtos,id'],
             'itens.*.descricao_item' => ['nullable', 'string', 'max:255'],
@@ -38,11 +38,9 @@ class OrdemServicoRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'cliente_id.required'        => 'Selecione um cliente.',
-            'cliente_id.exists'          => 'Cliente inválido.',
-            'descricao_servico.required' => 'Descreva o serviço a ser realizado.',
-            'valor_servico.required'     => 'Informe o valor do serviço.',
-            'data_prevista_entrega.after_or_equal' => 'A data prevista não pode ser no passado.',
+            'cliente_id.exists' => 'Cliente invalido.',
+            'forma_pagamento.required_if' => 'Selecione a forma de pagamento para receber agora.',
+            'data_prevista_entrega.after_or_equal' => 'A data prevista nao pode ser no passado.',
         ];
     }
 }

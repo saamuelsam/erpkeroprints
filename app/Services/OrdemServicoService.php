@@ -14,7 +14,10 @@ use RuntimeException;
 
 class OrdemServicoService
 {
-    public function __construct(protected EstoqueService $estoqueService)
+    public function __construct(
+        protected EstoqueService $estoqueService,
+        protected CaixaService $caixaService
+    )
     {
     }
 
@@ -29,10 +32,12 @@ class OrdemServicoService
             $dados['data_abertura']= now()->toDateString();
             $dados['status']       = $dados['status'] ?? 'ABERTA';
             $dados['status_pagamento'] = $dados['status_pagamento'] ?? 'PENDENTE';
+            $dados = $this->normalizarDados($dados);
 
             // Calcular valor_final antes de salvar
             $dados['valor_final'] = $this->calcularValorFinal(
                 (float)($dados['valor_servico'] ?? 0),
+                0,
                 (float)($dados['custos_adicionais'] ?? 0),
                 (float)($dados['desconto'] ?? 0)
             );
@@ -47,6 +52,30 @@ class OrdemServicoService
         });
     }
 
+    public function criarEReceber(array $dados, array $itens = []): OrdemServico
+    {
+        return DB::transaction(function () use ($dados, $itens) {
+            $dados['status'] = 'FINALIZADA';
+            $dados['status_pagamento'] = 'PAGO';
+            $dados['data_conclusao'] = now()->toDateString();
+
+            $os = $this->criar($dados, $itens);
+
+            $this->baixarEstoqueMateriais($os);
+            $this->caixaService->registrarEntradaAutomatica(
+                descricao: "Recebimento da OS #{$os->numero_os}",
+                valor: (float) $os->valor_final,
+                categoria: 'PAGAMENTO_OS',
+                formaPagamento: $os->forma_pagamento ?: 'A combinar',
+                clienteId: $os->cliente_id,
+                origemTipo: 'os',
+                origemId: $os->id
+            );
+
+            return $os->fresh(['itens', 'cliente']);
+        });
+    }
+
     /**
      * Atualiza OS com validação de transição de status.
      */
@@ -54,6 +83,7 @@ class OrdemServicoService
     {
         return DB::transaction(function () use ($os, $dados, $itens) {
             $statusAnterior = $os->status;
+            $dados = $this->normalizarDados($dados);
 
             $mudouStatus = isset($dados['status']) && $dados['status'] !== $statusAnterior;
 
@@ -64,15 +94,14 @@ class OrdemServicoService
             // Recalcular valor_final
             $dados['valor_final'] = $this->calcularValorFinal(
                 (float)($dados['valor_servico'] ?? $os->valor_servico),
+                (float)$os->itens()->sum('total_item'),
                 (float)($dados['custos_adicionais'] ?? $os->custos_adicionais),
                 (float)($dados['desconto'] ?? $os->desconto)
             );
 
             $os->update($dados);
 
-            if (!empty($itens)) {
-                $this->sincronizarItens($os, $itens);
-            }
+            $this->sincronizarItens($os, $itens);
 
             if ($mudouStatus) {
                 $this->registrarHistorico($os, $statusAnterior, $dados['status']);
@@ -128,6 +157,14 @@ class OrdemServicoService
 
         if (empty($itens)) {
             $os->itens()->delete();
+            $os->custo_materiais = 0;
+            $os->valor_final = $this->calcularValorFinal(
+                (float)$os->valor_servico,
+                0,
+                (float)$os->custos_adicionais,
+                (float)$os->desconto
+            );
+            $os->saveQuietly();
             return;
         }
 
@@ -146,6 +183,7 @@ class OrdemServicoService
 
         $registros           = [];
         $custoTotalMateriais = 0.0;
+        $valorTotalItens     = 0.0;
         $now                 = now();
 
         foreach ($itens as $item) {
@@ -176,6 +214,7 @@ class OrdemServicoService
             ];
 
             $custoTotalMateriais += $custoItem;
+            $valorTotalItens     += $totalItem;
         }
 
         // ── INSERT em lote ao invés de N inserts individuais ────────────────────
@@ -187,15 +226,16 @@ class OrdemServicoService
         $os->custo_materiais = round($custoTotalMateriais, 2);
         $os->valor_final     = $this->calcularValorFinal(
             (float)$os->valor_servico,
+            $valorTotalItens,
             (float)$os->custos_adicionais,
             (float)$os->desconto
         );
         $os->saveQuietly(); // saveQuietly evita disparar eventos desnecessários
     }
 
-    private function calcularValorFinal(float $servico, float $adicionais, float $desconto): float
+    private function calcularValorFinal(float $servico, float $itens, float $adicionais, float $desconto): float
     {
-        return max(0, round($servico + $adicionais - $desconto, 2));
+        return max(0, round($servico + $itens + $adicionais - $desconto, 2));
     }
 
     /**
@@ -219,7 +259,7 @@ class OrdemServicoService
         $produtos   = Produto::whereIn('id', $produtoIds)->get()->keyBy('id');
 
         foreach ($os->itens as $item) {
-            if ($item->produto_id && $produtos->has($item->produto_id)) {
+            if ($item->produto_id && $produtos->has($item->produto_id) && $produtos->get($item->produto_id)->controla_estoque) {
                 $this->estoqueService->movimentar(
                     produto: $produtos->get($item->produto_id),
                     tipo: 'SAIDA_OS',
@@ -233,6 +273,23 @@ class OrdemServicoService
                 );
             }
         }
+    }
+
+    private function normalizarDados(array $dados): array
+    {
+        foreach (['cliente_id', 'descricao_servico', 'data_prevista_entrega', 'forma_pagamento'] as $campo) {
+            if (array_key_exists($campo, $dados) && $dados[$campo] === '') {
+                $dados[$campo] = null;
+            }
+        }
+
+        foreach (['valor_servico', 'custos_adicionais', 'desconto'] as $campo) {
+            if (!array_key_exists($campo, $dados) || $dados[$campo] === null || $dados[$campo] === '') {
+                $dados[$campo] = 0;
+            }
+        }
+
+        return $dados;
     }
 
     private function validarMudancaStatus(OrdemServico $os, string $novoStatus): void

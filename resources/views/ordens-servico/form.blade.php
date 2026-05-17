@@ -24,9 +24,9 @@
                 <div class="card-body">
                     <div class="row g-3">
                         <div class="col-12 col-md-8">
-                            <label class="form-label fw-semibold">Cliente <span class="text-danger">*</span></label>
+                            <label class="form-label fw-semibold">Cliente <span class="text-muted fw-normal">(opcional)</span></label>
                             <select name="cliente_id" class="form-select @error('cliente_id') is-invalid @enderror">
-                                <option value="">Selecione o cliente...</option>
+                                <option value="">Consumidor final / venda avulsa</option>
                                 @foreach($clientes as $c)
                                     <option value="{{ $c->id }}" {{ old('cliente_id', $os->cliente_id) == $c->id ? 'selected' : '' }}>
                                         {{ $c->nome }}
@@ -45,10 +45,10 @@
                         </div>
 
                         <div class="col-12">
-                            <label class="form-label fw-semibold">Descrição do Serviço <span class="text-danger">*</span></label>
+                            <label class="form-label fw-semibold">Descrição do Serviço <span class="text-muted fw-normal">(opcional)</span></label>
                             <textarea name="descricao_servico" rows="4"
                                       class="form-control @error('descricao_servico') is-invalid @enderror"
-                                      placeholder="Descreva detalhadamente o serviço a ser realizado...">{{ old('descricao_servico', $os->descricao_servico) }}</textarea>
+                                      placeholder="Ex.: impressão A4, xerox, plastificação, acabamento...">{{ old('descricao_servico', $os->descricao_servico) }}</textarea>
                             @error('descricao_servico') <div class="invalid-feedback">{{ $message }}</div> @enderror
                         </div>
 
@@ -144,7 +144,7 @@
                 <div class="card-header"><i class="fa-solid fa-dollar-sign me-2"></i>Valores</div>
                 <div class="card-body">
                     <div class="mb-3">
-                        <label class="form-label fw-semibold">Valor do Serviço (R$) <span class="text-danger">*</span></label>
+                        <label class="form-label fw-semibold">Valor do Serviço (R$)</label>
                         <div class="input-group">
                             <span class="input-group-text">R$</span>
                             <input type="number" name="valor_servico" id="valor_servico"
@@ -177,6 +177,7 @@
 
                     <div class="alert alert-primary py-2 px-3">
                         <div class="d-flex justify-content-between small"><span>Serviço:</span><span id="res-servico">R$ 0,00</span></div>
+                        <div class="d-flex justify-content-between small"><span>Itens:</span><span id="res-itens">R$ 0,00</span></div>
                         <div class="d-flex justify-content-between small"><span>Adicionais:</span><span id="res-adicionais">R$ 0,00</span></div>
                         <div class="d-flex justify-content-between small text-danger"><span>Desconto:</span><span id="res-desconto">-R$ 0,00</span></div>
                         <hr class="my-1">
@@ -221,10 +222,15 @@
             @endif
 
             <div class="d-grid gap-2">
-                <button type="submit" class="btn btn-primary btn-lg">
+                <button type="submit" name="acao" value="salvar" class="btn btn-primary btn-lg">
                     <i class="fa-solid fa-floppy-disk me-2"></i>
                     {{ $os->exists ? 'Salvar alterações' : 'Criar Ordem de Serviço' }}
                 </button>
+                @if(!$os->exists)
+                    <button type="submit" name="acao" value="pagar_agora" class="btn btn-success btn-lg">
+                        <i class="fa-solid fa-cash-register me-2"></i>Finalizar e Receber Agora
+                    </button>
+                @endif
                 <a href="{{ route('ordens-servico.index') }}" class="btn btn-outline-secondary">Cancelar</a>
             </div>
         </div>
@@ -422,11 +428,14 @@ function fmt(val) {
 
 function calcTotal() {
     const servico    = parseFloat(document.getElementById('valor_servico').value) || 0;
+    const itens      = [...document.querySelectorAll('.item-total')]
+        .reduce((soma, campo) => soma + (parseFloat(campo.value) || 0), 0);
     const adicionais = parseFloat(document.getElementById('custos_adicionais').value) || 0;
     const desconto   = parseFloat(document.getElementById('desconto').value) || 0;
-    const total      = Math.max(0, servico + adicionais - desconto);
+    const total      = Math.max(0, servico + itens + adicionais - desconto);
 
     document.getElementById('res-servico').textContent    = fmt(servico);
+    document.getElementById('res-itens').textContent       = fmt(itens);
     document.getElementById('res-adicionais').textContent = fmt(adicionais);
     document.getElementById('res-desconto').textContent   = '-' + fmt(desconto);
     document.getElementById('res-total').textContent      = fmt(total);

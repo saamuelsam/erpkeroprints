@@ -91,13 +91,16 @@ class OrdemServicoController extends Controller
     public function store(OrdemServicoRequest $request)
     {
         try {
-            $os = $this->osService->criar(
-                $request->safe()->except('itens'),
-                $request->input('itens', [])
-            );
+            $dados = $request->safe()->except(['itens', 'acao']);
+            $itens = $request->input('itens', []);
+            $os = $request->input('acao') === 'pagar_agora'
+                ? $this->osService->criarEReceber($dados, $itens)
+                : $this->osService->criar($dados, $itens);
 
             return redirect()->route('ordens-servico.show', $os)
-                ->with('sucesso', "OS #{$os->numero_os} criada com sucesso!");
+                ->with('sucesso', $request->input('acao') === 'pagar_agora'
+                    ? "OS #{$os->numero_os} finalizada e recebida com sucesso!"
+                    : "OS #{$os->numero_os} criada com sucesso!");
         } catch (\Exception $e) {
             return back()->withInput()->with('erro', $e->getMessage());
         }
