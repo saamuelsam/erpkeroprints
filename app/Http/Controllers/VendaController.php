@@ -65,7 +65,7 @@ class VendaController extends Controller
             'desconto' => ['nullable', 'numeric', 'min:0'],
             'valor_recebido' => ['nullable', 'required_if:forma_pagamento,DINHEIRO', 'numeric', 'min:0'],
             'payer_email' => ['nullable', 'email'],
-            'pagamentos' => ['nullable', 'required_if:forma_pagamento,MISTO', 'array', 'min:2'],
+            'pagamentos' => ['exclude_unless:forma_pagamento,MISTO', 'required_if:forma_pagamento,MISTO', 'array', 'min:2'],
             'pagamentos.*.forma' => ['required_with:pagamentos', 'in:DINHEIRO,PIX,CARTAO_DEBITO,CARTAO_CREDITO,OUTROS'],
             'pagamentos.*.valor' => ['required_with:pagamentos', 'numeric', 'min:0.01'],
             'pagamentos.*.valor_recebido' => ['nullable', 'numeric', 'min:0'],
@@ -76,6 +76,13 @@ class VendaController extends Controller
             'itens.*.preco_unitario' => ['required', 'numeric', 'min:0'],
         ], [
             'valor_recebido.required_if' => 'Informe o valor recebido em dinheiro.',
+            'pagamentos.required_if' => 'Informe as formas do pagamento misto.',
+            'pagamentos.array' => 'As formas do pagamento misto precisam estar em formato valido.',
+            'pagamentos.min' => 'Informe pelo menos duas formas de pagamento no pagamento misto.',
+            'pagamentos.*.forma.required_with' => 'Selecione a forma de pagamento.',
+            'pagamentos.*.forma.in' => 'Uma das formas de pagamento selecionadas e invalida.',
+            'pagamentos.*.valor.required_with' => 'Informe o valor de cada forma de pagamento.',
+            'pagamentos.*.valor.min' => 'O valor de cada forma de pagamento precisa ser maior que zero.',
             'itens.*.produto_id.exists' => 'Um dos produtos nao esta mais disponivel para venda.',
         ]);
 

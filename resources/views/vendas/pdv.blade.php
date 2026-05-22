@@ -706,7 +706,6 @@ document.getElementById('btnFinalizar').addEventListener('click', () => {
         forma_pagamento: formaPagamento.value,
         desconto: Number(descontoInput.value || 0),
         valor_recebido: formaPagamento.value === 'DINHEIRO' ? Number(valorRecebidoInput.value || 0) : null,
-        pagamentos: formaPagamento.value === 'MISTO' ? pagamentosMistos() : [],
         payer_email: payerEmail.value || null,
         itens: carrinho.map(item => ({
             produto_id: item.produto_id,
@@ -715,6 +714,10 @@ document.getElementById('btnFinalizar').addEventListener('click', () => {
             preco_unitario: item.preco_unitario,
         })),
     };
+
+    if (formaPagamento.value === 'MISTO') {
+        payload.pagamentos = pagamentosMistos();
+    }
 
     fetch(vendaStoreUrl, {
         method: 'POST',
