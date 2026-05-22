@@ -128,6 +128,13 @@
                                     <a href="{{ route('produtos.edit', $produto) }}" class="btn btn-sm btn-outline-secondary" title="Editar">
                                         <i class="fa-solid fa-pen"></i>
                                     </a>
+                                    <button type="button"
+                                            class="btn btn-sm btn-outline-danger btn-delete-produto"
+                                            title="Excluir"
+                                            data-action="{{ route('produtos.destroy', $produto) }}"
+                                            data-nome="{{ $produto->nome }}">
+                                        <i class="fa-solid fa-trash"></i>
+                                    </button>
                                 </div>
                             </td>
                         </tr>
@@ -142,6 +149,33 @@
         @endif
     </div>
 </div>
+</div>
+
+<div class="modal fade" id="deleteProdutoModal" tabindex="-1" aria-labelledby="deleteProdutoModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <form method="POST" class="modal-content" id="deleteProdutoForm">
+            @csrf
+            @method('DELETE')
+            <div class="modal-header border-0 pb-0">
+                <div>
+                    <h5 class="modal-title fw-bold" id="deleteProdutoModalLabel">Excluir produto</h5>
+                    <p class="text-muted small mb-0">O produto sai do catálogo e do PDV, mas o histórico já registrado fica preservado.</p>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-danger mb-0">
+                    Confirmar exclusão de <strong id="deleteProdutoNome"></strong>?
+                </div>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="submit" class="btn btn-danger">
+                    <i class="fa-solid fa-trash me-1"></i>Excluir produto
+                </button>
+            </div>
+        </form>
+    </div>
 </div>
 @endsection
 
@@ -231,6 +265,14 @@ produtoFiltroForm?.querySelectorAll('select, input[type="checkbox"]').forEach(ca
 });
 
 produtosResultado?.addEventListener('click', event => {
+    const botaoExcluir = event.target.closest('.btn-delete-produto');
+    if (botaoExcluir) {
+        document.getElementById('deleteProdutoForm').action = botaoExcluir.dataset.action;
+        document.getElementById('deleteProdutoNome').textContent = botaoExcluir.dataset.nome || 'este produto';
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('deleteProdutoModal')).show();
+        return;
+    }
+
     const link = event.target.closest('.pagination a');
     if (!link) return;
 

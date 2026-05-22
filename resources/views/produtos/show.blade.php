@@ -16,6 +16,9 @@
         <a href="{{ route('produtos.edit', $produto) }}" class="btn btn-sm btn-outline-primary">
             <i class="fa-solid fa-pen me-1"></i>Editar
         </a>
+        <button class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#modalExcluirProduto">
+            <i class="fa-solid fa-trash me-1"></i>Excluir
+        </button>
         @if($produto->controla_estoque)
         <button class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#modalEntrada">
             <i class="fa-solid fa-arrow-up me-1"></i>Entrada de Estoque
@@ -24,6 +27,33 @@
             <i class="fa-solid fa-scale-balanced me-1"></i>Ajustar Estoque
         </button>
         @endif
+    </div>
+</div>
+
+<div class="modal fade" id="modalExcluirProduto" tabindex="-1" aria-labelledby="modalExcluirProdutoLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <form method="POST" action="{{ route('produtos.destroy', $produto) }}" class="modal-content">
+            @csrf
+            @method('DELETE')
+            <div class="modal-header border-0 pb-0">
+                <div>
+                    <h5 class="modal-title fw-bold" id="modalExcluirProdutoLabel">Excluir produto</h5>
+                    <p class="text-muted small mb-0">Ele nao aparecera mais no catalogo nem no PDV.</p>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-danger mb-0">
+                    Confirmar exclusao de <strong>{{ $produto->nome }}</strong>?
+                </div>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="submit" class="btn btn-danger">
+                    <i class="fa-solid fa-trash me-1"></i>Excluir produto
+                </button>
+            </div>
+        </form>
     </div>
 </div>
 

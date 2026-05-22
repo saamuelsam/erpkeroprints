@@ -8,6 +8,7 @@ use App\Services\MercadoPagoPixService;
 use App\Services\PixManualService;
 use App\Services\VendaService;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class VendaController extends Controller
@@ -62,12 +63,16 @@ class VendaController extends Controller
             'cliente_id' => ['nullable', 'exists:clientes,id'],
             'forma_pagamento' => ['required', 'in:DINHEIRO,PIX,CARTAO_DEBITO,CARTAO_CREDITO,OUTROS'],
             'desconto' => ['nullable', 'numeric', 'min:0'],
+            'valor_recebido' => ['nullable', 'required_if:forma_pagamento,DINHEIRO', 'numeric', 'min:0'],
             'payer_email' => ['nullable', 'email'],
             'itens' => ['required', 'array', 'min:1'],
-            'itens.*.produto_id' => ['required', 'exists:produtos,id'],
+            'itens.*.produto_id' => ['required', Rule::exists('produtos', 'id')->whereNull('deleted_at')->where('ativo', true)],
             'itens.*.descricao' => ['required', 'string', 'max:255'],
             'itens.*.quantidade' => ['required', 'numeric', 'min:0.001'],
             'itens.*.preco_unitario' => ['required', 'numeric', 'min:0'],
+        ], [
+            'valor_recebido.required_if' => 'Informe o valor recebido em dinheiro.',
+            'itens.*.produto_id.exists' => 'Um dos produtos nao esta mais disponivel para venda.',
         ]);
 
         $venda = null;
@@ -176,6 +181,8 @@ class VendaController extends Controller
             'subtotal' => (float) $venda->subtotal,
             'desconto' => (float) $venda->desconto,
             'valor_total' => (float) $venda->valor_total,
+            'valor_recebido' => (float) $venda->valor_recebido,
+            'troco' => (float) $venda->troco,
             'pix_qr_code' => $venda->pix_qr_code,
             'pix_qr_code_base64' => $venda->pix_qr_code_base64,
             'pix_qr_code_image_url' => $venda->getAttribute('pix_qr_code_image_url')

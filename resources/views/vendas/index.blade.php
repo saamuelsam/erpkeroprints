@@ -54,6 +54,7 @@
                             <th>Pagamento</th>
                             <th>Status</th>
                             <th class="text-end">Total</th>
+                            <th class="text-end">Troco</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -65,6 +66,13 @@
                                 <td>{{ $venda->forma_pagamento_label }}</td>
                                 <td><span class="badge bg-{{ $venda->status_badge }}">{{ $venda->status_label }}</span></td>
                                 <td class="text-end fw-semibold">R$ {{ number_format($venda->valor_total, 2, ',', '.') }}</td>
+                                <td class="text-end text-muted small">
+                                    @if($venda->forma_pagamento === 'DINHEIRO')
+                                        R$ {{ number_format($venda->troco, 2, ',', '.') }}
+                                    @else
+                                        —
+                                    @endif
+                                </td>
                             </tr>
                         @endforeach
                     </tbody>

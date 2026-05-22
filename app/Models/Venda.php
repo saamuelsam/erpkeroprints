@@ -18,6 +18,8 @@ class Venda extends Model
         'subtotal',
         'desconto',
         'valor_total',
+        'valor_recebido',
+        'troco',
         'forma_pagamento',
         'status',
         'mercado_pago_payment_id',
@@ -36,6 +38,8 @@ class Venda extends Model
         'subtotal' => 'decimal:2',
         'desconto' => 'decimal:2',
         'valor_total' => 'decimal:2',
+        'valor_recebido' => 'decimal:2',
+        'troco' => 'decimal:2',
         'pix_confirmado_em' => 'datetime',
         'pago_em' => 'datetime',
     ];
@@ -44,6 +48,7 @@ class Venda extends Model
         'subtotal' => 0,
         'desconto' => 0,
         'valor_total' => 0,
+        'troco' => 0,
         'status' => 'AGUARDANDO_PAGAMENTO',
     ];
 

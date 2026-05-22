@@ -157,6 +157,16 @@
                         <span class="muted">Forma de pagamento</span>
                         <strong id="pagamento">-</strong>
                     </div>
+                    <div id="dinheiroResumo" style="display:none">
+                        <div class="summary-line">
+                            <span class="muted">Valor recebido</span>
+                            <strong id="valorRecebido">R$ 0,00</strong>
+                        </div>
+                        <div class="summary-line">
+                            <span class="muted" id="trocoClienteLabel">Troco</span>
+                            <strong id="trocoCliente" class="text-success">R$ 0,00</strong>
+                        </div>
+                    </div>
                     <div class="summary-line">
                         <span class="muted">Status do pagamento</span>
                         <strong id="statusPagamento">Aguardando venda</strong>
@@ -257,6 +267,17 @@
         document.getElementById('desconto').textContent = '-' + dinheiro(data.totais?.desconto || 0);
         document.getElementById('total').textContent = dinheiro(data.totais?.total || 0);
         document.getElementById('pagamento').textContent = data.formaPagamento || '-';
+
+        const dinheiroResumo = document.getElementById('dinheiroResumo');
+        const isDinheiro = data.formaPagamentoCodigo === 'DINHEIRO';
+        dinheiroResumo.style.display = isDinheiro ? 'block' : 'none';
+        if (isDinheiro) {
+            const falta = Number(data.pagamentoDinheiro?.falta || 0);
+            document.getElementById('valorRecebido').textContent = dinheiro(data.pagamentoDinheiro?.valor_recebido || 0);
+            document.getElementById('trocoClienteLabel').textContent = falta > 0 ? 'Falta receber' : 'Troco';
+            document.getElementById('trocoCliente').className = falta > 0 ? 'text-danger' : 'text-success';
+            document.getElementById('trocoCliente').textContent = dinheiro(falta > 0 ? falta : data.pagamentoDinheiro?.troco || 0);
+        }
 
         atualizarStatus(data.venda);
         atualizarPix(data.venda);

@@ -12,6 +12,19 @@
     .pdv-item-active { background: #FFFBEA; }
     .pix-box img { max-width: 260px; width: 100%; }
     .pdv-brand-logo { max-height: 56px; width: auto; }
+    .cash-panel {
+        background: #F8FAFC;
+        border: 1px solid #D9E2EC;
+        border-radius: 8px;
+        padding: 12px;
+    }
+    .change-display {
+        color: #047857;
+        font-size: 1.4rem;
+        font-weight: 800;
+        line-height: 1;
+    }
+    .change-display.is-missing { color: #DC2626; }
     .pdv-toast-stack {
         position: fixed;
         right: 22px;
@@ -132,9 +145,28 @@
                     @endunless
                 </div>
 
-                <div class="mb-3">
+                <div class="mb-3" id="payerEmailBox">
                     <label class="form-label fw-semibold">E-mail para Pix</label>
                     <input type="email" id="payerEmail" class="form-control" placeholder="cliente@email.com">
+                </div>
+
+                <div class="mb-3 cash-panel" id="cashBox" style="display:none">
+                    <label class="form-label fw-semibold">Valor recebido em dinheiro</label>
+                    <div class="input-group mb-2">
+                        <span class="input-group-text">R$</span>
+                        <input type="number" id="valorRecebido" class="form-control form-control-lg" min="0" step="0.01" inputmode="decimal" placeholder="0,00">
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="text-muted small" id="trocoLabel">Troco</span>
+                        <span class="change-display" id="trocoDisplay">R$ 0,00</span>
+                    </div>
+                    <div class="d-flex gap-2 mt-2 flex-wrap">
+                        <button type="button" class="btn btn-sm btn-outline-secondary cash-fast" data-cash="exact">Exato</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary cash-fast" data-cash="10">R$ 10</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary cash-fast" data-cash="20">R$ 20</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary cash-fast" data-cash="50">R$ 50</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary cash-fast" data-cash="100">R$ 100</button>
+                    </div>
                 </div>
 
                 <div class="mb-3">
@@ -145,6 +177,7 @@
                 <div class="border-top pt-3">
                     <div class="d-flex justify-content-between text-muted"><span>Subtotal</span><span id="subtotalDisplay">R$ 0,00</span></div>
                     <div class="d-flex justify-content-between text-danger"><span>Desconto</span><span id="descontoDisplay">-R$ 0,00</span></div>
+                    <div class="d-flex justify-content-between text-muted"><span>Itens</span><span id="itensDisplay">0</span></div>
                     <div class="d-flex justify-content-between align-items-end mt-2">
                         <span class="fw-bold">Total</span>
                         <span class="fw-bold text-success pdv-total" id="totalDisplay">R$ 0,00</span>
@@ -230,6 +263,9 @@ const scanInput = document.getElementById('scanInput');
 const resultadoBusca = document.getElementById('resultadoBusca');
 const cartBody = document.getElementById('cartBody');
 const descontoInput = document.getElementById('desconto');
+const valorRecebidoInput = document.getElementById('valorRecebido');
+const cashBox = document.getElementById('cashBox');
+const payerEmailBox = document.getElementById('payerEmailBox');
 const formaPagamento = document.getElementById('formaPagamento');
 const clienteId = document.getElementById('clienteId');
 const payerEmail = document.getElementById('payerEmail');
@@ -325,8 +361,34 @@ function renderResultados(produtos) {
 
 function totais() {
     const subtotal = carrinho.reduce((sum, item) => sum + item.quantidade * item.preco_unitario, 0);
-    const desconto = Number(descontoInput.value || 0);
-    return { subtotal, desconto, total: Math.max(0, subtotal - desconto) };
+    const desconto = Math.min(Number(descontoInput.value || 0), subtotal);
+    const total = Math.max(0, subtotal - desconto);
+    const recebido = Number(valorRecebidoInput?.value || 0);
+    return {
+        subtotal,
+        desconto,
+        total,
+        valor_recebido: formaPagamento.value === 'DINHEIRO' ? recebido : null,
+        troco: formaPagamento.value === 'DINHEIRO' ? Math.max(0, recebido - total) : 0,
+        falta: formaPagamento.value === 'DINHEIRO' ? Math.max(0, total - recebido) : 0,
+    };
+}
+
+function atualizarPagamentoUi() {
+    const dinheiroSelecionado = formaPagamento.value === 'DINHEIRO';
+    const pixSelecionado = formaPagamento.value === 'PIX';
+
+    cashBox.style.display = dinheiroSelecionado ? 'block' : 'none';
+    payerEmailBox.style.display = pixSelecionado ? 'block' : 'none';
+
+    const total = totais();
+    const trocoDisplay = document.getElementById('trocoDisplay');
+    const trocoLabel = document.getElementById('trocoLabel');
+    const falta = total.falta > 0;
+
+    trocoDisplay.classList.toggle('is-missing', falta);
+    trocoLabel.textContent = falta ? 'Falta receber' : 'Troco';
+    trocoDisplay.textContent = dinheiro(falta ? total.falta : total.troco);
 }
 
 function renderCarrinho() {
@@ -364,19 +426,27 @@ function renderCarrinho() {
     const total = totais();
     document.getElementById('subtotalDisplay').textContent = dinheiro(total.subtotal);
     document.getElementById('descontoDisplay').textContent = '-' + dinheiro(total.desconto);
+    document.getElementById('itensDisplay').textContent = carrinho.reduce((sum, item) => sum + Number(item.quantidade || 0), 0).toLocaleString('pt-BR');
     document.getElementById('totalDisplay').textContent = dinheiro(total.total);
+    atualizarPagamentoUi();
 
     publicarCliente();
 }
 
 function publicarCliente(extra = {}) {
     const selectedCliente = clienteId.options[clienteId.selectedIndex];
+    const totaisAtuais = totais();
 
     canalCliente?.postMessage({
         type: 'pdv-update',
         carrinho,
-        totais: totais(),
+        totais: totaisAtuais,
         desconto: Number(descontoInput.value || 0),
+        pagamentoDinheiro: {
+            valor_recebido: totaisAtuais.valor_recebido,
+            troco: totaisAtuais.troco,
+            falta: totaisAtuais.falta,
+        },
         formaPagamento: formaPagamento.options[formaPagamento.selectedIndex]?.text || '',
         formaPagamentoCodigo: formaPagamento.value,
         cliente: selectedCliente?.value ? selectedCliente.text : 'Consumidor final',
@@ -470,8 +540,19 @@ clienteId.addEventListener('change', () => {
     publicarCliente();
 });
 
-[descontoInput, formaPagamento].forEach(el => el.addEventListener('input', renderCarrinho));
-[descontoInput, formaPagamento].forEach(el => el.addEventListener('change', renderCarrinho));
+[descontoInput, valorRecebidoInput, formaPagamento].forEach(el => el?.addEventListener('input', renderCarrinho));
+[descontoInput, valorRecebidoInput, formaPagamento].forEach(el => el?.addEventListener('change', renderCarrinho));
+
+document.querySelectorAll('.cash-fast').forEach(botao => {
+    botao.addEventListener('click', () => {
+        const total = totais().total;
+        valorRecebidoInput.value = botao.dataset.cash === 'exact'
+            ? total.toFixed(2)
+            : Number(botao.dataset.cash).toFixed(2);
+        renderCarrinho();
+        valorRecebidoInput.focus();
+    });
+});
 
 document.getElementById('btnFinalizar').addEventListener('click', () => {
     if (!carrinho.length) {
@@ -479,10 +560,19 @@ document.getElementById('btnFinalizar').addEventListener('click', () => {
         return;
     }
 
+    const totalAtual = totais();
+
+    if (formaPagamento.value === 'DINHEIRO' && totalAtual.falta > 0) {
+        valorRecebidoInput.focus();
+        notificar('warning', 'Dinheiro insuficiente', `Ainda falta ${dinheiro(totalAtual.falta)} para fechar a venda.`);
+        return;
+    }
+
     const payload = {
         cliente_id: clienteId.value || null,
         forma_pagamento: formaPagamento.value,
         desconto: Number(descontoInput.value || 0),
+        valor_recebido: formaPagamento.value === 'DINHEIRO' ? Number(valorRecebidoInput.value || 0) : null,
         payer_email: payerEmail.value || null,
         itens: carrinho.map(item => ({
             produto_id: item.produto_id,
@@ -620,6 +710,7 @@ function novaVenda() {
     carrinho = [];
     vendaAtual = null;
     descontoInput.value = 0;
+    valorRecebidoInput.value = '';
     document.getElementById('pixBox').style.display = 'none';
     renderCarrinho();
     scanInput.focus();

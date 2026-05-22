@@ -27,6 +27,19 @@ class VendaService
 
             $subtotal = collect($itensNormalizados)->sum('total_item');
             $desconto = (float) ($dados['desconto'] ?? 0);
+            $valorTotal = max(0, round($subtotal - $desconto, 2));
+
+            if ($desconto > $subtotal) {
+                throw new RuntimeException('O desconto nao pode ser maior que o subtotal da venda.');
+            }
+
+            $valorRecebido = $dados['forma_pagamento'] === 'DINHEIRO'
+                ? round((float) ($dados['valor_recebido'] ?? 0), 2)
+                : null;
+
+            if ($dados['forma_pagamento'] === 'DINHEIRO' && $valorRecebido < $valorTotal) {
+                throw new RuntimeException('O valor recebido em dinheiro e menor que o total da venda.');
+            }
 
             $venda = Venda::create([
                 'numero' => Venda::gerarNumero(),
@@ -34,7 +47,9 @@ class VendaService
                 'user_id' => Auth::id(),
                 'subtotal' => $subtotal,
                 'desconto' => $desconto,
-                'valor_total' => max(0, round($subtotal - $desconto, 2)),
+                'valor_total' => $valorTotal,
+                'valor_recebido' => $valorRecebido,
+                'troco' => $valorRecebido === null ? 0 : max(0, round($valorRecebido - $valorTotal, 2)),
                 'forma_pagamento' => $dados['forma_pagamento'],
                 'status' => 'AGUARDANDO_PAGAMENTO',
             ]);
@@ -187,7 +202,8 @@ class VendaService
     private function normalizarItens(array $itens): array
     {
         $produtoIds = collect($itens)->pluck('produto_id')->filter()->unique()->values();
-        $produtos = Produto::whereIn('id', $produtoIds)
+        $produtos = Produto::ativos()
+            ->whereIn('id', $produtoIds)
             ->get(['id', 'nome', 'preco_venda', 'custo_unitario'])
             ->keyBy('id');
 
@@ -196,15 +212,15 @@ class VendaService
                 $produtoId = $item['produto_id'] ?? null;
                 $produto = $produtoId ? $produtos->get($produtoId) : null;
                 $quantidade = (float) ($item['quantidade'] ?? 0);
-                $preco = (float) ($item['preco_unitario'] ?? $produto?->preco_venda ?? 0);
+                $preco = (float) ($produto?->preco_venda ?? 0);
 
-                if ($quantidade <= 0 || $preco < 0) {
+                if (!$produto || $quantidade <= 0 || $preco < 0) {
                     return null;
                 }
 
                 return [
                     'produto_id' => $produto?->id,
-                    'descricao' => $item['descricao'] ?? $produto?->nome ?? 'Produto avulso',
+                    'descricao' => $produto->nome,
                     'quantidade' => $quantidade,
                     'preco_unitario' => $preco,
                     'custo_unitario' => (float) ($produto?->custo_unitario ?? 0),
