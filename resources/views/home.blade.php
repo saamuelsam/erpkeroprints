@@ -39,6 +39,7 @@
 
     {{-- Card: Estoque Baixo --}}
     <div class="col-12 col-sm-6 col-xl-3">
+        <a href="{{ route('produtos.index', ['estoque_baixo' => 1]) }}" class="text-decoration-none text-reset" title="Ver produtos com estoque baixo">
         <div class="card h-100" style="border-left: 4px solid #EC008C;">
             <div class="card-body d-flex align-items-center gap-3">
                 <div class="rounded-3 d-flex align-items-center justify-content-center"
@@ -51,6 +52,7 @@
                 </div>
             </div>
         </div>
+        </a>
     </div>
 
     {{-- Card: Entregas Hoje --}}

@@ -36,9 +36,13 @@ class VendaService
             $valorRecebido = $dados['forma_pagamento'] === 'DINHEIRO'
                 ? round((float) ($dados['valor_recebido'] ?? 0), 2)
                 : null;
+            $pagamentos = $this->normalizarPagamentos($dados, $valorTotal);
 
             if ($dados['forma_pagamento'] === 'DINHEIRO' && $valorRecebido < $valorTotal) {
                 throw new RuntimeException('O valor recebido em dinheiro e menor que o total da venda.');
+            }
+            if ($dados['forma_pagamento'] === 'MISTO') {
+                $valorRecebido = $this->valorRecebidoDinheiroMisto($pagamentos);
             }
 
             $venda = Venda::create([
@@ -49,8 +53,9 @@ class VendaService
                 'desconto' => $desconto,
                 'valor_total' => $valorTotal,
                 'valor_recebido' => $valorRecebido,
-                'troco' => $valorRecebido === null ? 0 : max(0, round($valorRecebido - $valorTotal, 2)),
+                'troco' => $this->calcularTroco($dados['forma_pagamento'], $valorTotal, $valorRecebido, $pagamentos),
                 'forma_pagamento' => $dados['forma_pagamento'],
+                'pagamentos' => $pagamentos,
                 'status' => 'AGUARDANDO_PAGAMENTO',
             ]);
 
@@ -58,7 +63,7 @@ class VendaService
                 $venda->itens()->create($item);
             }
 
-            if ($venda->forma_pagamento !== 'PIX') {
+            if (!$venda->usaPix()) {
                 $this->confirmarPagamento($venda);
             }
 
@@ -230,5 +235,77 @@ class VendaService
             ->filter()
             ->values()
             ->all();
+    }
+
+    private function normalizarPagamentos(array $dados, float $valorTotal): ?array
+    {
+        if (($dados['forma_pagamento'] ?? null) !== 'MISTO') {
+            return null;
+        }
+
+        $pagamentos = collect($dados['pagamentos'] ?? [])
+            ->map(function (array $pagamento) {
+                $forma = $pagamento['forma'] ?? null;
+                $valor = round((float) ($pagamento['valor'] ?? 0), 2);
+                $valorRecebido = $forma === 'DINHEIRO'
+                    ? round((float) ($pagamento['valor_recebido'] ?? $valor), 2)
+                    : null;
+
+                if (!$forma || $valor <= 0) {
+                    return null;
+                }
+
+                if (!array_key_exists($forma, Venda::FORMAS_PAGAMENTO) || $forma === 'MISTO') {
+                    return null;
+                }
+
+                if ($forma === 'DINHEIRO' && $valorRecebido < $valor) {
+                    throw new RuntimeException('No pagamento misto, o dinheiro recebido nao pode ser menor que a parte em dinheiro.');
+                }
+
+                return [
+                    'forma' => $forma,
+                    'valor' => $valor,
+                    'valor_recebido' => $valorRecebido,
+                    'troco' => $valorRecebido === null ? 0 : max(0, round($valorRecebido - $valor, 2)),
+                ];
+            })
+            ->filter()
+            ->values();
+
+        if ($pagamentos->count() < 2) {
+            throw new RuntimeException('Informe pelo menos duas formas de pagamento no pagamento misto.');
+        }
+
+        $soma = round($pagamentos->sum(fn($pagamento) => (float) $pagamento['valor']), 2);
+        if (abs($soma - $valorTotal) > 0.009) {
+            throw new RuntimeException('A soma das formas de pagamento precisa ser igual ao total da venda.');
+        }
+
+        return $pagamentos->all();
+    }
+
+    private function valorRecebidoDinheiroMisto(?array $pagamentos): ?float
+    {
+        $valor = collect($pagamentos ?? [])
+            ->where('forma', 'DINHEIRO')
+            ->sum(fn($pagamento) => (float) ($pagamento['valor_recebido'] ?? 0));
+
+        return $valor > 0 ? round($valor, 2) : null;
+    }
+
+    private function calcularTroco(string $formaPagamento, float $valorTotal, ?float $valorRecebido, ?array $pagamentos): float
+    {
+        if ($formaPagamento === 'DINHEIRO') {
+            return $valorRecebido === null ? 0 : max(0, round($valorRecebido - $valorTotal, 2));
+        }
+
+        if ($formaPagamento !== 'MISTO') {
+            return 0;
+        }
+
+        return round(collect($pagamentos ?? [])
+            ->where('forma', 'DINHEIRO')
+            ->sum(fn($pagamento) => (float) ($pagamento['troco'] ?? 0)), 2);
     }
 }

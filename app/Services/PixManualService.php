@@ -8,11 +8,16 @@ class PixManualService
 {
     public function gerarParaVenda(Venda $venda): array
     {
+        return $this->gerarParaVendaComValor($venda, $venda->valor_pix ?: (float) $venda->valor_total);
+    }
+
+    public function gerarParaVendaComValor(Venda $venda, float $valor): array
+    {
         $payload = $this->payload(
             chave: config('services.pix_manual.key'),
             nome: config('services.pix_manual.merchant_name'),
             cidade: config('services.pix_manual.merchant_city'),
-            valor: (float) $venda->valor_total,
+            valor: $valor,
             identificador: $venda->numero,
         );
 

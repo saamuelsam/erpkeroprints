@@ -224,9 +224,9 @@
 <!-- ══════════════════ SIDEBAR ══════════════════ -->
 <aside class="sidebar" id="sidebar">
     <div class="sidebar-brand">
-        <div class="brand-logo-area">
+        <a href="{{ route('vendas.pdv') }}" class="brand-logo-area" title="Abrir PDV">
             <img src="{{ asset('images/logo-white.png') }}" alt="Kero Prints Gráfica e Papelaria" class="brand-logo-img">
-        </div>
+        </a>
     </div>
 
     <nav class="py-2">

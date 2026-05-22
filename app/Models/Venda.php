@@ -21,6 +21,7 @@ class Venda extends Model
         'valor_recebido',
         'troco',
         'forma_pagamento',
+        'pagamentos',
         'status',
         'mercado_pago_payment_id',
         'mercado_pago_status',
@@ -40,6 +41,7 @@ class Venda extends Model
         'valor_total' => 'decimal:2',
         'valor_recebido' => 'decimal:2',
         'troco' => 'decimal:2',
+        'pagamentos' => 'array',
         'pix_confirmado_em' => 'datetime',
         'pago_em' => 'datetime',
     ];
@@ -58,6 +60,7 @@ class Venda extends Model
         'CARTAO_DEBITO' => 'Cartao de Debito',
         'CARTAO_CREDITO' => 'Cartao de Credito',
         'OUTROS' => 'Outros',
+        'MISTO' => 'Pagamento misto',
     ];
 
     public const STATUS_LABELS = [
@@ -88,7 +91,34 @@ class Venda extends Model
 
     public function getFormaPagamentoLabelAttribute(): string
     {
+        if ($this->forma_pagamento === 'MISTO' && is_array($this->pagamentos)) {
+            return collect($this->pagamentos)
+                ->map(fn($pagamento) => (self::FORMAS_PAGAMENTO[$pagamento['forma'] ?? ''] ?? $pagamento['forma'] ?? '') . ' R$ ' . number_format((float) ($pagamento['valor'] ?? 0), 2, ',', '.'))
+                ->filter()
+                ->implode(' + ');
+        }
+
         return self::FORMAS_PAGAMENTO[$this->forma_pagamento] ?? $this->forma_pagamento ?? '';
+    }
+
+    public function getValorPixAttribute(): float
+    {
+        if ($this->forma_pagamento === 'PIX') {
+            return (float) $this->valor_total;
+        }
+
+        if ($this->forma_pagamento !== 'MISTO' || !is_array($this->pagamentos)) {
+            return 0.0;
+        }
+
+        return round(collect($this->pagamentos)
+            ->where('forma', 'PIX')
+            ->sum(fn($pagamento) => (float) ($pagamento['valor'] ?? 0)), 2);
+    }
+
+    public function usaPix(): bool
+    {
+        return $this->forma_pagamento === 'PIX' || $this->valor_pix > 0;
     }
 
     public function getStatusLabelAttribute(): string

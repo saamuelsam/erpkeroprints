@@ -25,6 +25,13 @@
         line-height: 1;
     }
     .change-display.is-missing { color: #DC2626; }
+    .mixed-payment-row {
+        align-items: end;
+        display: grid;
+        gap: 8px;
+        grid-template-columns: minmax(0, 1.2fr) minmax(90px, .8fr) minmax(90px, .8fr);
+    }
+    @media (max-width: 576px) { .mixed-payment-row { grid-template-columns: 1fr; } }
     .pdv-toast-stack {
         position: fixed;
         right: 22px;
@@ -169,6 +176,20 @@
                     </div>
                 </div>
 
+                <div class="mb-3 cash-panel" id="mixedBox" style="display:none">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <label class="form-label fw-semibold mb-0">Pagamento misto</label>
+                        <button type="button" class="btn btn-sm btn-outline-primary" id="btnAddPagamento">
+                            <i class="fa-solid fa-plus me-1"></i>Adicionar
+                        </button>
+                    </div>
+                    <div class="d-grid gap-2" id="pagamentosMistos"></div>
+                    <div class="border-top mt-2 pt-2 small">
+                        <div class="d-flex justify-content-between"><span class="text-muted">Distribuido</span><strong id="mistoDistribuido">R$ 0,00</strong></div>
+                        <div class="d-flex justify-content-between"><span class="text-muted" id="mistoSaldoLabel">Falta distribuir</span><strong id="mistoSaldo">R$ 0,00</strong></div>
+                    </div>
+                </div>
+
                 <div class="mb-3">
                     <label class="form-label fw-semibold">Desconto (R$)</label>
                     <input type="number" id="desconto" class="form-control" min="0" step="0.01" value="0">
@@ -265,6 +286,8 @@ const cartBody = document.getElementById('cartBody');
 const descontoInput = document.getElementById('desconto');
 const valorRecebidoInput = document.getElementById('valorRecebido');
 const cashBox = document.getElementById('cashBox');
+const mixedBox = document.getElementById('mixedBox');
+const pagamentosMistosEl = document.getElementById('pagamentosMistos');
 const payerEmailBox = document.getElementById('payerEmailBox');
 const formaPagamento = document.getElementById('formaPagamento');
 const clienteId = document.getElementById('clienteId');
@@ -374,14 +397,89 @@ function totais() {
     };
 }
 
+function pagamentosMistos() {
+    return [...pagamentosMistosEl.querySelectorAll('.mixed-payment-row')]
+        .map(row => {
+            const forma = row.querySelector('.misto-forma').value;
+            const valor = Number(row.querySelector('.misto-valor').value || 0);
+            const valorRecebido = Number(row.querySelector('.misto-recebido')?.value || valor);
+
+            return {
+                forma,
+                valor,
+                valor_recebido: forma === 'DINHEIRO' ? valorRecebido : null,
+            };
+        })
+        .filter(pagamento => pagamento.forma && pagamento.valor > 0);
+}
+
+function totalMisto() {
+    return pagamentosMistos().reduce((soma, pagamento) => soma + pagamento.valor, 0);
+}
+
+function mistoTemPix() {
+    return formaPagamento.value === 'MISTO' && pagamentosMistos().some(pagamento => pagamento.forma === 'PIX');
+}
+
+function addPagamentoMisto(forma = 'PIX', valor = 0) {
+    const row = document.createElement('div');
+    row.className = 'mixed-payment-row';
+    row.innerHTML = `
+        <div>
+            <label class="form-label small text-muted mb-1">Forma</label>
+            <select class="form-select form-select-sm misto-forma">
+                <option value="PIX">Pix</option>
+                <option value="CARTAO_DEBITO">Cartao de Debito</option>
+                <option value="CARTAO_CREDITO">Cartao de Credito</option>
+                <option value="DINHEIRO">Dinheiro</option>
+                <option value="OUTROS">Outros</option>
+            </select>
+        </div>
+        <div>
+            <label class="form-label small text-muted mb-1">Valor</label>
+            <input type="number" class="form-control form-control-sm misto-valor" min="0" step="0.01" value="${Number(valor || 0).toFixed(2)}">
+        </div>
+        <div>
+            <label class="form-label small text-muted mb-1">Recebido</label>
+            <div class="input-group input-group-sm">
+                <input type="number" class="form-control misto-recebido" min="0" step="0.01" value="${Number(valor || 0).toFixed(2)}">
+                <button class="btn btn-outline-danger btn-remove-misto" type="button" title="Remover"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+        </div>
+    `;
+    row.querySelector('.misto-forma').value = forma;
+    row.querySelectorAll('input, select').forEach(el => {
+        el.addEventListener('input', renderCarrinho);
+        el.addEventListener('change', renderCarrinho);
+    });
+    row.querySelector('.btn-remove-misto').addEventListener('click', () => {
+        row.remove();
+        renderCarrinho();
+    });
+    pagamentosMistosEl.appendChild(row);
+    atualizarLinhaMista(row);
+}
+
+function atualizarLinhaMista(row) {
+    const forma = row.querySelector('.misto-forma').value;
+    const recebidoInput = row.querySelector('.misto-recebido');
+    recebidoInput.disabled = forma !== 'DINHEIRO';
+    if (forma !== 'DINHEIRO') {
+        recebidoInput.value = row.querySelector('.misto-valor').value || '0.00';
+    }
+}
+
 function atualizarPagamentoUi() {
     const dinheiroSelecionado = formaPagamento.value === 'DINHEIRO';
-    const pixSelecionado = formaPagamento.value === 'PIX';
+    const mistoSelecionado = formaPagamento.value === 'MISTO';
+    const pixSelecionado = formaPagamento.value === 'PIX' || mistoTemPix();
 
     cashBox.style.display = dinheiroSelecionado ? 'block' : 'none';
+    mixedBox.style.display = mistoSelecionado ? 'block' : 'none';
     payerEmailBox.style.display = pixSelecionado ? 'block' : 'none';
 
     const total = totais();
+    pagamentosMistosEl.querySelectorAll('.mixed-payment-row').forEach(atualizarLinhaMista);
     const trocoDisplay = document.getElementById('trocoDisplay');
     const trocoLabel = document.getElementById('trocoLabel');
     const falta = total.falta > 0;
@@ -389,6 +487,13 @@ function atualizarPagamentoUi() {
     trocoDisplay.classList.toggle('is-missing', falta);
     trocoLabel.textContent = falta ? 'Falta receber' : 'Troco';
     trocoDisplay.textContent = dinheiro(falta ? total.falta : total.troco);
+
+    const distribuido = totalMisto();
+    const saldo = total.total - distribuido;
+    document.getElementById('mistoDistribuido').textContent = dinheiro(distribuido);
+    document.getElementById('mistoSaldoLabel').textContent = saldo >= 0 ? 'Falta distribuir' : 'Excedente';
+    document.getElementById('mistoSaldo').textContent = dinheiro(Math.abs(saldo));
+    document.getElementById('mistoSaldo').className = Math.abs(saldo) < 0.01 ? 'text-success' : 'text-danger';
 }
 
 function renderCarrinho() {
@@ -447,6 +552,7 @@ function publicarCliente(extra = {}) {
             troco: totaisAtuais.troco,
             falta: totaisAtuais.falta,
         },
+        pagamentosMistos: pagamentosMistos(),
         formaPagamento: formaPagamento.options[formaPagamento.selectedIndex]?.text || '',
         formaPagamentoCodigo: formaPagamento.value,
         cliente: selectedCliente?.value ? selectedCliente.text : 'Consumidor final',
@@ -543,6 +649,21 @@ clienteId.addEventListener('change', () => {
 [descontoInput, valorRecebidoInput, formaPagamento].forEach(el => el?.addEventListener('input', renderCarrinho));
 [descontoInput, valorRecebidoInput, formaPagamento].forEach(el => el?.addEventListener('change', renderCarrinho));
 
+document.getElementById('btnAddPagamento').addEventListener('click', () => {
+    const restante = Math.max(0, totais().total - totalMisto());
+    addPagamentoMisto('OUTROS', restante);
+    renderCarrinho();
+});
+
+formaPagamento.addEventListener('change', () => {
+    if (formaPagamento.value === 'MISTO' && pagamentosMistosEl.children.length === 0) {
+        const total = totais().total;
+        addPagamentoMisto('PIX', total);
+        addPagamentoMisto('CARTAO_CREDITO', 0);
+        renderCarrinho();
+    }
+});
+
 document.querySelectorAll('.cash-fast').forEach(botao => {
     botao.addEventListener('click', () => {
         const total = totais().total;
@@ -568,11 +689,24 @@ document.getElementById('btnFinalizar').addEventListener('click', () => {
         return;
     }
 
+    if (formaPagamento.value === 'MISTO') {
+        if (pagamentosMistos().length < 2) {
+            notificar('warning', 'Pagamento misto incompleto', 'Informe pelo menos duas formas de pagamento.');
+            return;
+        }
+
+        if (Math.abs(totalAtual.total - totalMisto()) > 0.009) {
+            notificar('warning', 'Valores nao fecham', 'A soma das formas de pagamento precisa bater com o total.');
+            return;
+        }
+    }
+
     const payload = {
         cliente_id: clienteId.value || null,
         forma_pagamento: formaPagamento.value,
         desconto: Number(descontoInput.value || 0),
         valor_recebido: formaPagamento.value === 'DINHEIRO' ? Number(valorRecebidoInput.value || 0) : null,
+        pagamentos: formaPagamento.value === 'MISTO' ? pagamentosMistos() : [],
         payer_email: payerEmail.value || null,
         itens: carrinho.map(item => ({
             produto_id: item.produto_id,
@@ -598,7 +732,7 @@ document.getElementById('btnFinalizar').addEventListener('click', () => {
         mostrarPix(vendaAtual);
         publicarCliente({ type: 'pdv-sale-created' });
 
-        if (vendaAtual.forma_pagamento === 'PIX') {
+        if (vendaAtual.forma_pagamento === 'PIX' || Number(vendaAtual.valor_pix || 0) > 0) {
             iniciarConsultaPix();
         } else {
             notificar('success', 'Venda finalizada', data.message);
@@ -609,7 +743,7 @@ document.getElementById('btnFinalizar').addEventListener('click', () => {
 });
 
 function mostrarPix(venda) {
-    document.getElementById('pixBox').style.display = venda.forma_pagamento === 'PIX' ? 'block' : 'none';
+    document.getElementById('pixBox').style.display = (venda.forma_pagamento === 'PIX' || Number(venda.valor_pix || 0) > 0) ? 'block' : 'none';
     document.getElementById('pixStatus').textContent = venda.status_label;
     document.getElementById('pixCopiaCola').value = venda.pix_qr_code || '';
     document.getElementById('pixQrImage').src = venda.pix_qr_code_base64
@@ -711,6 +845,7 @@ function novaVenda() {
     vendaAtual = null;
     descontoInput.value = 0;
     valorRecebidoInput.value = '';
+    pagamentosMistosEl.innerHTML = '';
     document.getElementById('pixBox').style.display = 'none';
     renderCarrinho();
     scanInput.focus();

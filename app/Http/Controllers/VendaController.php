@@ -61,10 +61,14 @@ class VendaController extends Controller
     {
         $validated = $request->validate([
             'cliente_id' => ['nullable', 'exists:clientes,id'],
-            'forma_pagamento' => ['required', 'in:DINHEIRO,PIX,CARTAO_DEBITO,CARTAO_CREDITO,OUTROS'],
+            'forma_pagamento' => ['required', 'in:DINHEIRO,PIX,CARTAO_DEBITO,CARTAO_CREDITO,OUTROS,MISTO'],
             'desconto' => ['nullable', 'numeric', 'min:0'],
             'valor_recebido' => ['nullable', 'required_if:forma_pagamento,DINHEIRO', 'numeric', 'min:0'],
             'payer_email' => ['nullable', 'email'],
+            'pagamentos' => ['nullable', 'required_if:forma_pagamento,MISTO', 'array', 'min:2'],
+            'pagamentos.*.forma' => ['required_with:pagamentos', 'in:DINHEIRO,PIX,CARTAO_DEBITO,CARTAO_CREDITO,OUTROS'],
+            'pagamentos.*.valor' => ['required_with:pagamentos', 'numeric', 'min:0.01'],
+            'pagamentos.*.valor_recebido' => ['nullable', 'numeric', 'min:0'],
             'itens' => ['required', 'array', 'min:1'],
             'itens.*.produto_id' => ['required', Rule::exists('produtos', 'id')->whereNull('deleted_at')->where('ativo', true)],
             'itens.*.descricao' => ['required', 'string', 'max:255'],
@@ -80,12 +84,12 @@ class VendaController extends Controller
         try {
             $venda = $this->vendaService->criar($validated, $validated['itens']);
 
-            if ($venda->forma_pagamento === 'PIX') {
+            if ($venda->usaPix()) {
                 if (filled(config('services.mercado_pago.access_token'))) {
-                    $pagamento = $this->mercadoPagoPixService->criarPix($venda, $validated['payer_email'] ?? null);
+                    $pagamento = $this->mercadoPagoPixService->criarPixComValor($venda, $venda->valor_pix, $validated['payer_email'] ?? null);
                     $venda = $this->vendaService->anexarPix($venda, $pagamento);
                 } else {
-                    $pix = $this->pixManualService->gerarParaVenda($venda);
+                    $pix = $this->pixManualService->gerarParaVendaComValor($venda, $venda->valor_pix);
                     $venda = $this->vendaService->anexarPixManual($venda, $pix);
                     $venda->setAttribute('pix_qr_code_image_url', $pix['qr_code_image_url']);
                 }
@@ -127,7 +131,7 @@ class VendaController extends Controller
     public function confirmarManual(Request $request, Venda $venda)
     {
         try {
-            if ($venda->forma_pagamento !== 'PIX' || $venda->mercado_pago_payment_id) {
+            if (!$venda->usaPix() || $venda->mercado_pago_payment_id) {
                 return response()->json(['message' => 'Esta venda nao usa Pix manual.'], 422);
             }
 
@@ -183,11 +187,13 @@ class VendaController extends Controller
             'valor_total' => (float) $venda->valor_total,
             'valor_recebido' => (float) $venda->valor_recebido,
             'troco' => (float) $venda->troco,
+            'valor_pix' => (float) $venda->valor_pix,
+            'pagamentos' => $venda->pagamentos ?? [],
             'pix_qr_code' => $venda->pix_qr_code,
             'pix_qr_code_base64' => $venda->pix_qr_code_base64,
             'pix_qr_code_image_url' => $venda->getAttribute('pix_qr_code_image_url')
                 ?: ($venda->pix_qr_code ? 'https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=' . urlencode($venda->pix_qr_code) : null),
-            'pix_manual' => $venda->forma_pagamento === 'PIX' && blank($venda->mercado_pago_payment_id),
+            'pix_manual' => $venda->usaPix() && blank($venda->mercado_pago_payment_id),
             'pix_confirmado_em' => optional($venda->pix_confirmado_em)->toISOString(),
             'pix_confirmacao_referencia' => $venda->pix_confirmacao_referencia,
             'pix_confirmacao_pagador' => $venda->pix_confirmacao_pagador,

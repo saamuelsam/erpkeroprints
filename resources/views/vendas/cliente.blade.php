@@ -157,6 +157,7 @@
                         <span class="muted">Forma de pagamento</span>
                         <strong id="pagamento">-</strong>
                     </div>
+                    <div id="pagamentoMistoResumo" class="small" style="display:none"></div>
                     <div id="dinheiroResumo" style="display:none">
                         <div class="summary-line">
                             <span class="muted">Valor recebido</span>
@@ -225,7 +226,9 @@
     function atualizarPix(venda) {
         const pix = document.getElementById('pix');
 
-        if (venda?.forma_pagamento === 'PIX' && venda?.pix_qr_code_base64) {
+        const vendaUsaPix = venda?.forma_pagamento === 'PIX' || Number(venda?.valor_pix || 0) > 0;
+
+        if (vendaUsaPix && venda?.pix_qr_code_base64) {
             pix.style.display = 'block';
             document.getElementById('pixImg').src = `data:image/png;base64,${venda.pix_qr_code_base64}`;
             document.getElementById('pixStatus').textContent = venda.status_label || 'Aguardando pagamento';
@@ -233,7 +236,7 @@
             return;
         }
 
-        if (venda?.forma_pagamento === 'PIX' && venda?.pix_qr_code_image_url) {
+        if (vendaUsaPix && venda?.pix_qr_code_image_url) {
             pix.style.display = 'block';
             document.getElementById('pixImg').src = venda.pix_qr_code_image_url;
             document.getElementById('pixStatus').textContent = venda.status_label || 'Aguardando pagamento';
@@ -269,8 +272,19 @@
         document.getElementById('pagamento').textContent = data.formaPagamento || '-';
 
         const dinheiroResumo = document.getElementById('dinheiroResumo');
+        const mistoResumo = document.getElementById('pagamentoMistoResumo');
         const isDinheiro = data.formaPagamentoCodigo === 'DINHEIRO';
+        const isMisto = data.formaPagamentoCodigo === 'MISTO';
         dinheiroResumo.style.display = isDinheiro ? 'block' : 'none';
+        mistoResumo.style.display = isMisto ? 'block' : 'none';
+        mistoResumo.innerHTML = isMisto
+            ? (data.pagamentosMistos || []).map(p => `
+                <div class="summary-line py-2">
+                    <span class="muted">${p.forma}</span>
+                    <strong>${dinheiro(p.valor || 0)}</strong>
+                </div>
+            `).join('')
+            : '';
         if (isDinheiro) {
             const falta = Number(data.pagamentoDinheiro?.falta || 0);
             document.getElementById('valorRecebido').textContent = dinheiro(data.pagamentoDinheiro?.valor_recebido || 0);
