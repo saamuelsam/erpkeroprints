@@ -5,12 +5,23 @@
 
 @push('styles')
 <style>
-    .pdv-shell { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 16px; }
-    .pdv-cart { max-height: calc(100vh - 330px); overflow-y: auto; }
+    .pdv-shell { align-items: start; display: grid; grid-template-columns: minmax(0, 1fr) 390px; gap: 16px; }
+    .pdv-main { min-width: 0; }
+    .pdv-side { position: sticky; top: 82px; }
+    .pdv-payment-card .card-body { max-height: calc(100vh - 142px); overflow-y: auto; }
+    .pdv-cart { max-height: calc(100vh - 315px); overflow-y: auto; }
     .pdv-total { font-size: 2.4rem; line-height: 1; }
     .pdv-scan-input { font-size: 1.2rem; height: 54px; }
     .pdv-item-active { background: #FFFBEA; }
-    .pix-box img { max-width: 260px; width: 100%; }
+    .pix-box {
+        background: #F8FAFC;
+        border: 1px solid #D9E2EC;
+        border-radius: 8px;
+        display: none;
+        padding: 12px;
+    }
+    .pix-box img { max-width: 210px; width: 100%; }
+    .pix-box textarea { font-size: .78rem; max-height: 84px; resize: none; }
     .pdv-brand-logo { max-height: 56px; width: auto; }
     .cash-panel {
         background: #F8FAFC;
@@ -31,7 +42,19 @@
         gap: 8px;
         grid-template-columns: minmax(0, 1.2fr) minmax(90px, .8fr) minmax(90px, .8fr);
     }
-    @media (max-width: 576px) { .mixed-payment-row { grid-template-columns: 1fr; } }
+    .pdv-summary {
+        background: #FFFFFF;
+        border-top: 1px solid #E2E8F0;
+        bottom: 0;
+        padding-top: 12px;
+        position: sticky;
+    }
+    .pdv-actions {
+        background: #FFFFFF;
+        bottom: 0;
+        padding-bottom: 2px;
+        position: sticky;
+    }
     .pdv-toast-stack {
         position: fixed;
         right: 22px;
@@ -56,7 +79,12 @@
     .pdv-toast-title { font-weight: 800; margin-bottom: 2px; }
     .pdv-toast-message { color: #CBD5E1; font-size: .9rem; white-space: pre-line; }
     @keyframes toastIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
-    @media (max-width: 992px) { .pdv-shell { grid-template-columns: 1fr; } }
+    @media (max-width: 992px) {
+        .pdv-shell { grid-template-columns: 1fr; }
+        .pdv-side { position: static; }
+        .pdv-payment-card .card-body { max-height: none; }
+    }
+    @media (max-width: 576px) { .mixed-payment-row { grid-template-columns: 1fr; } }
 </style>
 @endpush
 
@@ -82,7 +110,7 @@
 <div class="pdv-toast-stack" id="pdvToastStack" aria-live="polite" aria-atomic="true"></div>
 
 <div class="pdv-shell">
-    <div class="d-flex flex-column gap-3">
+    <div class="d-flex flex-column gap-3 pdv-main">
         <div class="card">
             <div class="card-body">
                 <label class="form-label fw-semibold">Leitura do produto</label>
@@ -126,8 +154,8 @@
         </div>
     </div>
 
-    <div class="d-flex flex-column gap-3">
-        <div class="card">
+    <div class="d-flex flex-column gap-3 pdv-side">
+        <div class="card pdv-payment-card">
             <div class="card-header"><i class="fa-solid fa-cash-register me-2"></i>Pagamento</div>
             <div class="card-body">
                 <div class="mb-3">
@@ -155,6 +183,25 @@
                 <div class="mb-3" id="payerEmailBox">
                     <label class="form-label fw-semibold">E-mail para Pix</label>
                     <input type="email" id="payerEmail" class="form-control" placeholder="cliente@email.com">
+                </div>
+
+                <div class="pix-box mb-3" id="pixBox">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <div>
+                            <div class="fw-bold"><i class="fa-brands fa-pix me-1"></i>Pix</div>
+                            <div class="small text-muted" id="pixStatus">Aguardando pagamento...</div>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-primary" id="btnConsultarPix">
+                            <i class="fa-solid fa-rotate me-1"></i>Consultar
+                        </button>
+                    </div>
+                    <div class="text-center">
+                        <img id="pixQrImage" alt="QR Code Pix" class="mx-auto mb-2">
+                    </div>
+                    <textarea id="pixCopiaCola" class="form-control small" rows="3" readonly></textarea>
+                    <button type="button" class="btn btn-success w-100 mt-2" id="btnConfirmarPixManual" style="display:none">
+                        <i class="fa-solid fa-check me-1"></i>Confirmar Pix manual
+                    </button>
                 </div>
 
                 <div class="mb-3 cash-panel" id="cashBox" style="display:none">
@@ -195,7 +242,7 @@
                     <input type="number" id="desconto" class="form-control" min="0" step="0.01" value="0">
                 </div>
 
-                <div class="border-top pt-3">
+                <div class="pdv-summary">
                     <div class="d-flex justify-content-between text-muted"><span>Subtotal</span><span id="subtotalDisplay">R$ 0,00</span></div>
                     <div class="d-flex justify-content-between text-danger"><span>Desconto</span><span id="descontoDisplay">-R$ 0,00</span></div>
                     <div class="d-flex justify-content-between text-muted"><span>Itens</span><span id="itensDisplay">0</span></div>
@@ -205,24 +252,11 @@
                     </div>
                 </div>
 
-                <button type="button" id="btnFinalizar" class="btn btn-success btn-lg w-100 mt-3">
-                    <i class="fa-solid fa-check me-2"></i>Finalizar venda
-                </button>
-            </div>
-        </div>
-
-        <div class="card pix-box" id="pixBox" style="display:none">
-            <div class="card-header"><i class="fa-brands fa-pix me-2"></i>Pix Mercado Pago</div>
-            <div class="card-body text-center">
-                <div class="fw-semibold mb-2" id="pixStatus">Aguardando pagamento...</div>
-                <img id="pixQrImage" alt="QR Code Pix" class="mx-auto mb-3">
-                <textarea id="pixCopiaCola" class="form-control small" rows="4" readonly></textarea>
-                <button type="button" class="btn btn-outline-primary w-100 mt-2" id="btnConsultarPix">
-                    <i class="fa-solid fa-rotate me-1"></i>Consultar pagamento
-                </button>
-                <button type="button" class="btn btn-success w-100 mt-2" id="btnConfirmarPixManual" style="display:none">
-                    <i class="fa-solid fa-check me-1"></i>Confirmar Pix manual
-                </button>
+                <div class="pdv-actions mt-3">
+                    <button type="button" id="btnFinalizar" class="btn btn-success btn-lg w-100">
+                        <i class="fa-solid fa-check me-2"></i>Finalizar venda
+                    </button>
+                </div>
             </div>
         </div>
     </div>
