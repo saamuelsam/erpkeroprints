@@ -35,6 +35,16 @@
             <div class="col-6 col-md-2">
                 <input type="date" name="data_fim" value="{{ request('data_fim') }}" class="form-control" title="Data fim">
             </div>
+            <div class="col-12 col-md-auto">
+                <div class="form-check small mb-1">
+                    <input class="form-check-input" type="checkbox" name="incluir_removidas" value="1" id="incluir_removidas" {{ request()->boolean('incluir_removidas') ? 'checked' : '' }}>
+                    <label class="form-check-label" for="incluir_removidas">Incluir removidas</label>
+                </div>
+                <div class="form-check small">
+                    <input class="form-check-input" type="checkbox" name="somente_removidas" value="1" id="somente_removidas" {{ request()->boolean('somente_removidas') ? 'checked' : '' }}>
+                    <label class="form-check-label" for="somente_removidas">Somente removidas</label>
+                </div>
+            </div>
             <div class="col-auto d-flex gap-2">
                 <button type="submit" class="btn btn-primary"><i class="fa-solid fa-search me-1"></i>Filtrar</button>
                 <a href="{{ route('financeiro.entradas.index') }}" class="btn btn-outline-secondary">Limpar</a>
@@ -115,7 +125,7 @@
                         @php
                             $venda = $entrada->origem_tipo === 'venda' ? $entrada->vendaOrigem : null;
                         @endphp
-                        <tr>
+                        <tr @class(['table-secondary' => $entrada->trashed()])>
                             <td class="text-muted small">{{ $entrada->data->format('d/m/Y') }}</td>
                             <td class="text-muted small">{{ $venda?->created_at?->format('H:i') ?? '—' }}</td>
                             <td>
@@ -123,14 +133,25 @@
                                 @if($entrada->origem_tipo)
                                     <span class="badge bg-info-subtle text-info ms-1" style="font-size:.65rem">Auto</span>
                                 @endif
+                                @if($entrada->trashed())
+                                    <span class="badge bg-secondary-subtle text-secondary ms-1" style="font-size:.65rem">Removida</span>
+                                @endif
                             </td>
                             <td class="small">{{ $entrada->categoria_label }}</td>
                             <td class="small text-muted">{{ $entrada->forma_pagamento ?? '—' }}</td>
                             <td class="small">{{ $entrada->cliente->nome ?? '—' }}</td>
                             <td class="text-end fw-semibold text-success">R$ {{ number_format($entrada->valor, 2, ',', '.') }}</td>
-                            <td><span class="badge bg-{{ $entrada->status_badge }}">{{ $entrada->status_label }}</span></td>
+                            <td>
+                                @if($entrada->trashed())
+                                    <span class="badge bg-secondary">Removida</span>
+                                @else
+                                    <span class="badge bg-{{ $entrada->status_badge }}">{{ $entrada->status_label }}</span>
+                                @endif
+                            </td>
                             <td class="text-end">
-                                @if($venda)
+                                @if($entrada->trashed())
+                                    <span class="text-muted small">{{ $entrada->deleted_at?->format('d/m/Y H:i') }}</span>
+                                @elseif($venda)
                                     <button class="btn btn-sm btn-outline-primary" type="button"
                                             data-bs-toggle="collapse" data-bs-target="#vendaItens{{ $entrada->id }}"
                                             aria-expanded="false" aria-controls="vendaItens{{ $entrada->id }}"
@@ -204,7 +225,9 @@
                 </table>
             </div>
             <div class="d-flex justify-content-between align-items-center p-3 border-top">
-                <small class="text-muted">{{ $entradas->total() }} entradas</small>
+                <small class="text-muted">
+                    Exibindo {{ $entradas->firstItem() }} a {{ $entradas->lastItem() }} de {{ $entradas->total() }} entradas
+                </small>
                 {{ $entradas->links() }}
             </div>
         @endif

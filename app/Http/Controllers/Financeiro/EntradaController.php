@@ -20,6 +20,12 @@ class EntradaController extends Controller
     {
         $query = FinanceiroEntrada::with('cliente', 'responsavel', 'vendaOrigem.itens.produto');
 
+        if ($request->boolean('somente_removidas')) {
+            $query->onlyTrashed();
+        } elseif ($request->boolean('incluir_removidas')) {
+            $query->withTrashed();
+        }
+
         if ($busca = $request->input('busca')) {
             $query->busca($busca);
         }
@@ -52,7 +58,7 @@ class EntradaController extends Controller
             ->limit(8)
             ->get();
 
-        $entradas   = $query->latest('data')->paginate(20)->withQueryString();
+        $entradas   = $query->orderByDesc('data')->orderByDesc('created_at')->paginate(50)->withQueryString();
         $categorias = FinanceiroEntrada::CATEGORIAS;
 
         // Totais do filtro atual
