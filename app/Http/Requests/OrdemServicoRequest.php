@@ -16,6 +16,7 @@ class OrdemServicoRequest extends FormRequest
         return [
             'acao'                   => ['nullable', 'in:salvar,pagar_agora'],
             'cliente_id'             => ['nullable', 'exists:clientes,id'],
+            'cliente_nome'           => ['nullable', 'string', 'max:150'],
             'data_prevista_entrega'  => ['nullable', 'date', 'after_or_equal:today'],
             'descricao_servico'      => ['nullable', 'string', 'max:5000'],
             'observacoes_internas'   => ['nullable', 'string', 'max:2000'],

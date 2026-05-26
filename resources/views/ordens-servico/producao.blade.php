@@ -137,7 +137,7 @@
                                 <span class="small fw-semibold">R$ {{ number_format($os->valor_final, 2, ',', '.') }}</span>
                             </div>
 
-                            <div class="small text-muted mt-1">{{ $os->cliente?->nome ?? 'Consumidor final' }}</div>
+                            <div class="small text-muted mt-1">{{ $os->cliente_exibicao }}</div>
                             <div class="small mt-2">
                                 @if($atrasada)
                                     <span class="badge bg-danger">Atrasada: {{ $os->data_prevista_entrega->format('d/m') }}</span>

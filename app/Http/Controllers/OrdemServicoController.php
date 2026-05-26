@@ -22,6 +22,7 @@ class OrdemServicoController extends Controller
         if ($busca = $request->input('busca')) {
             $query->where(function ($q) use ($busca) {
                 $q->where('numero_os', 'like', "%{$busca}%")
+                  ->orWhere('cliente_nome', 'like', "%{$busca}%")
                   ->orWhereHas('cliente', fn($c) => $c->where('nome', 'like', "%{$busca}%"));
             });
         }

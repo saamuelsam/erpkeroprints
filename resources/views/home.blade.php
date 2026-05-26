@@ -108,7 +108,7 @@
                                             {{ $os->numero_os }}
                                         </a>
                                     </td>
-                                    <td>{{ $os->cliente?->nome ?? 'Consumidor final' }}</td>
+                                    <td>{{ $os->cliente_exibicao }}</td>
                                     <td>{{ $os->data_prevista_entrega?->format('d/m/Y') ?? '—' }}</td>
                                     <td>
                                         <span class="badge bg-{{ $os->status_badge }}">{{ $os->status_label }}</span>

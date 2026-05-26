@@ -16,6 +16,7 @@ class OrdemServico extends Model
     protected $fillable = [
         'numero_os',
         'cliente_id',
+        'cliente_nome',
         'user_id',
         'data_abertura',
         'data_prevista_entrega',
@@ -100,6 +101,11 @@ class OrdemServico extends Model
     {
         $status = $this->status ?? 'ABERTA';
         return self::STATUS_LABELS[$status]['label'] ?? $status;
+    }
+
+    public function getClienteExibicaoAttribute(): string
+    {
+        return $this->cliente?->nome ?: ($this->cliente_nome ?: 'Consumidor final');
     }
 
     public function getStatusBadgeAttribute(): string

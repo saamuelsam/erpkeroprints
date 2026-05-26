@@ -277,10 +277,14 @@ class OrdemServicoService
 
     private function normalizarDados(array $dados): array
     {
-        foreach (['cliente_id', 'descricao_servico', 'data_prevista_entrega', 'forma_pagamento'] as $campo) {
+        foreach (['cliente_id', 'cliente_nome', 'descricao_servico', 'data_prevista_entrega', 'forma_pagamento'] as $campo) {
             if (array_key_exists($campo, $dados) && $dados[$campo] === '') {
                 $dados[$campo] = null;
             }
+        }
+
+        if (!empty($dados['cliente_id'])) {
+            $dados['cliente_nome'] = null;
         }
 
         foreach (['valor_servico', 'custos_adicionais', 'desconto'] as $campo) {

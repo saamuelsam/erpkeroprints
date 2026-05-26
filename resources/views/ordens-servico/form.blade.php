@@ -24,7 +24,7 @@
                 <div class="card-body">
                     <div class="row g-3">
                         <div class="col-12 col-md-8">
-                            <label class="form-label fw-semibold">Cliente <span class="text-muted fw-normal">(opcional)</span></label>
+                            <label class="form-label fw-semibold">Cliente cadastrado <span class="text-muted fw-normal">(opcional)</span></label>
                             <select name="cliente_id" class="form-select @error('cliente_id') is-invalid @enderror">
                                 <option value="">Consumidor final / venda avulsa</option>
                                 @foreach($clientes as $c)
@@ -41,6 +41,20 @@
                                 @endforeach
                             </select>
                             @error('cliente_id') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                        </div>
+
+                        <div class="col-12 col-md-4">
+                            <label class="form-label fw-semibold">Nome no comprovante <span class="text-muted fw-normal">(opcional)</span></label>
+                            <input type="text" name="cliente_nome"
+                                   value="{{ old('cliente_nome', $os->cliente_nome) }}"
+                                   class="form-control @error('cliente_nome') is-invalid @enderror"
+                                   maxlength="150"
+                                   placeholder="Ex.: Cliente balcão">
+                            @error('cliente_nome') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                            <div class="form-text">Use quando não quiser cadastrar o cliente.</div>
+                        </div>
+
+                        <div class="col-12">
                             <div class="border rounded bg-light p-2 mt-2 small d-none" id="cliente-resumo">
                                 <div class="fw-semibold mb-1" id="cliente-resumo-nome"></div>
                                 <div class="text-muted d-flex flex-column gap-1">
@@ -260,6 +274,7 @@ let itemIdx = {{ $os->exists ? $os->itens->count() : 0 }};
 const buscaUrl = '{{ route('api.produtos.buscar') }}';
 let buscaTimer;
 const clienteSelect = document.querySelector('select[name="cliente_id"]');
+const clienteNomeInput = document.querySelector('input[name="cliente_nome"]');
 const clienteResumo = document.getElementById('cliente-resumo');
 
 function atualizarResumoCliente() {
@@ -291,9 +306,27 @@ function atualizarResumoCliente() {
     document.getElementById('cliente-resumo-contato').classList.toggle('d-none', !contato);
     document.getElementById('cliente-resumo-endereco').classList.toggle('d-none', !endereco);
     clienteResumo.classList.remove('d-none');
+
+    if (clienteNomeInput) {
+        clienteNomeInput.value = '';
+        clienteNomeInput.disabled = true;
+        clienteNomeInput.placeholder = 'Usando cadastro selecionado';
+    }
 }
 
-clienteSelect?.addEventListener('change', atualizarResumoCliente);
+function atualizarCampoNomeAvulso() {
+    if (!clienteSelect || !clienteNomeInput) return;
+
+    if (!clienteSelect.value) {
+        clienteNomeInput.disabled = false;
+        clienteNomeInput.placeholder = 'Ex.: Cliente balcão';
+    }
+}
+
+clienteSelect?.addEventListener('change', () => {
+    atualizarResumoCliente();
+    atualizarCampoNomeAvulso();
+});
 
 // ─── Linha de item avulso (sem produto) ──────────────────────────────────────
 function novaLinhaAvulsa(idx, produto = null) {
@@ -499,6 +532,7 @@ function calcTotal() {
 bindItens();
 calcTotal();
 atualizarResumoCliente();
+atualizarCampoNomeAvulso();
 document.querySelectorAll('.item-row').forEach(calcLinhTotal);
 </script>
 @endpush

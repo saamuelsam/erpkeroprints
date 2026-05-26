@@ -66,7 +66,7 @@
         <div class="card text-center">
             <div class="card-body">
                 <div class="text-muted small">Cliente</div>
-                <div class="fw-semibold">{{ $os->cliente?->nome ?? 'Consumidor final' }}</div>
+                <div class="fw-semibold">{{ $os->cliente_exibicao }}</div>
                 <div class="text-muted small">{{ $os->cliente?->telefone_formatado ?? 'Venda avulsa' }}</div>
                 @if($os->cliente?->cpf_cnpj_formatado)
                     <div class="text-muted small">{{ $os->cliente->cpf_cnpj_formatado }}</div>
@@ -149,6 +149,11 @@
                                 @endif
                             </dd>
                         @endif
+                    </dl>
+                @elseif($os->cliente_nome)
+                    <dl class="row small mb-0">
+                        <dt class="col-4 text-muted">Nome</dt>
+                        <dd class="col-8 fw-semibold">{{ $os->cliente_nome }}</dd>
                     </dl>
                 @else
                     <div class="text-muted small">Consumidor final / venda avulsa.</div>
