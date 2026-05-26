@@ -28,12 +28,27 @@
                             <select name="cliente_id" class="form-select @error('cliente_id') is-invalid @enderror">
                                 <option value="">Consumidor final / venda avulsa</option>
                                 @foreach($clientes as $c)
-                                    <option value="{{ $c->id }}" {{ old('cliente_id', $os->cliente_id) == $c->id ? 'selected' : '' }}>
+                                    <option value="{{ $c->id }}"
+                                            data-telefone="{{ $c->telefone_formatado }}"
+                                            data-cpf-cnpj="{{ $c->cpf_cnpj_formatado }}"
+                                            data-email="{{ $c->email }}"
+                                            data-endereco="{{ trim(($c->endereco ? $c->endereco . ', ' . $c->numero : '') . ($c->complemento ? ' - ' . $c->complemento : '')) }}"
+                                            data-cidade="{{ trim(($c->bairro ? $c->bairro . ' - ' : '') . ($c->cidade ? $c->cidade . '/' . $c->estado : '')) }}"
+                                            data-cep="{{ $c->cep }}"
+                                            {{ old('cliente_id', $os->cliente_id) == $c->id ? 'selected' : '' }}>
                                         {{ $c->nome }}
                                     </option>
                                 @endforeach
                             </select>
                             @error('cliente_id') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                            <div class="border rounded bg-light p-2 mt-2 small d-none" id="cliente-resumo">
+                                <div class="fw-semibold mb-1" id="cliente-resumo-nome"></div>
+                                <div class="text-muted d-flex flex-column gap-1">
+                                    <span id="cliente-resumo-doc"></span>
+                                    <span id="cliente-resumo-contato"></span>
+                                    <span id="cliente-resumo-endereco"></span>
+                                </div>
+                            </div>
                         </div>
 
                         <div class="col-12 col-md-4">
@@ -244,6 +259,41 @@
 let itemIdx = {{ $os->exists ? $os->itens->count() : 0 }};
 const buscaUrl = '{{ route('api.produtos.buscar') }}';
 let buscaTimer;
+const clienteSelect = document.querySelector('select[name="cliente_id"]');
+const clienteResumo = document.getElementById('cliente-resumo');
+
+function atualizarResumoCliente() {
+    if (!clienteSelect || !clienteResumo) return;
+
+    const option = clienteSelect.options[clienteSelect.selectedIndex];
+    if (!option || !option.value) {
+        clienteResumo.classList.add('d-none');
+        return;
+    }
+
+    const doc = option.dataset.cpfCnpj ? `CPF/CNPJ: ${option.dataset.cpfCnpj}` : '';
+    const contato = [
+        option.dataset.telefone ? `Tel: ${option.dataset.telefone}` : '',
+        option.dataset.email ? `E-mail: ${option.dataset.email}` : '',
+    ].filter(Boolean).join(' | ');
+    const endereco = [
+        option.dataset.endereco || '',
+        option.dataset.cidade || '',
+        option.dataset.cep ? `CEP: ${option.dataset.cep}` : '',
+    ].filter(Boolean).join(' | ');
+
+    document.getElementById('cliente-resumo-nome').textContent = option.textContent.trim();
+    document.getElementById('cliente-resumo-doc').textContent = doc;
+    document.getElementById('cliente-resumo-contato').textContent = contato;
+    document.getElementById('cliente-resumo-endereco').textContent = endereco;
+
+    document.getElementById('cliente-resumo-doc').classList.toggle('d-none', !doc);
+    document.getElementById('cliente-resumo-contato').classList.toggle('d-none', !contato);
+    document.getElementById('cliente-resumo-endereco').classList.toggle('d-none', !endereco);
+    clienteResumo.classList.remove('d-none');
+}
+
+clienteSelect?.addEventListener('change', atualizarResumoCliente);
 
 // ─── Linha de item avulso (sem produto) ──────────────────────────────────────
 function novaLinhaAvulsa(idx, produto = null) {
@@ -448,6 +498,7 @@ function calcTotal() {
 
 bindItens();
 calcTotal();
+atualizarResumoCliente();
 document.querySelectorAll('.item-row').forEach(calcLinhTotal);
 </script>
 @endpush

@@ -21,8 +21,11 @@
     <h4 class="mb-0 fw-bold">OS #{{ $os->numero_os }}</h4>
     <span class="badge bg-{{ $os->status_badge }} fs-6">{{ $os->status_label }}</span>
     <div class="ms-auto d-flex gap-2 flex-wrap">
+        <button type="button" class="btn btn-sm btn-outline-secondary no-print" onclick="window.print()">
+            <i class="fa-solid fa-print me-1"></i>Imprimir comprovante
+        </button>
         @if($proximoStatus)
-            <form method="POST" action="{{ route('ordens-servico.status-rapido', $os) }}">
+            <form method="POST" action="{{ route('ordens-servico.status-rapido', $os) }}" class="no-print">
                 @csrf
                 @method('PATCH')
                 <input type="hidden" name="status" value="{{ $proximoStatus }}">
@@ -31,7 +34,7 @@
                 </button>
             </form>
         @endif
-        <a href="{{ route('ordens-servico.edit', $os) }}" class="btn btn-sm btn-outline-primary">
+        <a href="{{ route('ordens-servico.edit', $os) }}" class="btn btn-sm btn-outline-primary no-print">
             <i class="fa-solid fa-pen me-1"></i>Editar
         </a>
     </div>
@@ -65,6 +68,9 @@
                 <div class="text-muted small">Cliente</div>
                 <div class="fw-semibold">{{ $os->cliente?->nome ?? 'Consumidor final' }}</div>
                 <div class="text-muted small">{{ $os->cliente?->telefone_formatado ?? 'Venda avulsa' }}</div>
+                @if($os->cliente?->cpf_cnpj_formatado)
+                    <div class="text-muted small">{{ $os->cliente->cpf_cnpj_formatado }}</div>
+                @endif
             </div>
         </div>
     </div>
@@ -86,7 +92,7 @@
                 <p class="mb-3">{{ $os->descricao_servico ?: 'Venda avulsa sem descrição detalhada.' }}</p>
 
                 @if($os->observacoes_internas)
-                    <div class="alert alert-warning py-2 small">
+                    <div class="alert alert-warning py-2 small no-print">
                         <strong>Interno:</strong> {{ $os->observacoes_internas }}
                     </div>
                 @endif
@@ -105,8 +111,53 @@
         </div>
     </div>
 
-    {{-- Histórico de Status --}}
+    {{-- Dados do cliente para comprovante --}}
     <div class="col-12 col-lg-5">
+        <div class="card h-100">
+            <div class="card-header"><i class="fa-solid fa-user me-2"></i>Dados do Cliente</div>
+            <div class="card-body">
+                @if($os->cliente)
+                    <dl class="row small mb-0">
+                        <dt class="col-4 text-muted">Nome</dt>
+                        <dd class="col-8 fw-semibold">{{ $os->cliente->nome }}</dd>
+
+                        @if($os->cliente->cpf_cnpj_formatado)
+                            <dt class="col-4 text-muted">CPF/CNPJ</dt>
+                            <dd class="col-8">{{ $os->cliente->cpf_cnpj_formatado }}</dd>
+                        @endif
+
+                        @if($os->cliente->telefone_formatado)
+                            <dt class="col-4 text-muted">Telefone</dt>
+                            <dd class="col-8">{{ $os->cliente->telefone_formatado }}</dd>
+                        @endif
+
+                        @if($os->cliente->email)
+                            <dt class="col-4 text-muted">E-mail</dt>
+                            <dd class="col-8">{{ $os->cliente->email }}</dd>
+                        @endif
+
+                        @if($os->cliente->endereco)
+                            <dt class="col-4 text-muted">Endereço</dt>
+                            <dd class="col-8">
+                                {{ $os->cliente->endereco }}{{ $os->cliente->numero ? ', ' . $os->cliente->numero : '' }}
+                                @if($os->cliente->complemento) - {{ $os->cliente->complemento }} @endif
+                                @if($os->cliente->bairro || $os->cliente->cidade)
+                                    <br>{{ $os->cliente->bairro }}{{ $os->cliente->cidade ? ' - ' . $os->cliente->cidade . '/' . $os->cliente->estado : '' }}
+                                @endif
+                                @if($os->cliente->cep)
+                                    <br>CEP: {{ $os->cliente->cep }}
+                                @endif
+                            </dd>
+                        @endif
+                    </dl>
+                @else
+                    <div class="text-muted small">Consumidor final / venda avulsa.</div>
+                @endif
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-lg-5 no-print">
         <div class="card h-100">
             <div class="card-header"><i class="fa-solid fa-clock-rotate-left me-2"></i>Histórico de Status</div>
             <div class="card-body p-0">
@@ -180,3 +231,32 @@
     </div>
 </div>
 @endsection
+
+@push('styles')
+<style>
+@media print {
+    .no-print,
+    .sidebar,
+    .topbar {
+        display: none !important;
+    }
+
+    body {
+        background: #fff !important;
+    }
+
+    .content-wrapper,
+    .main-content {
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 100% !important;
+    }
+
+    .card {
+        border: 1px solid #d5dbe3 !important;
+        box-shadow: none !important;
+        break-inside: avoid;
+    }
+}
+</style>
+@endpush

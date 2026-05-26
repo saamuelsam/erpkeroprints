@@ -77,7 +77,20 @@ class OrdemServicoController extends Controller
 
     public function create()
     {
-        $clientes        = Cliente::ativos()->orderBy('nome')->get(['id', 'nome']);
+        $clientes        = Cliente::ativos()->orderBy('nome')->get([
+            'id',
+            'nome',
+            'telefone',
+            'cpf_cnpj',
+            'email',
+            'endereco',
+            'numero',
+            'complemento',
+            'bairro',
+            'cidade',
+            'estado',
+            'cep',
+        ]);
         $formasPagamento = $this->formasPagamento();
 
         return view('ordens-servico.form', [
@@ -120,7 +133,20 @@ class OrdemServicoController extends Controller
 
     public function edit(OrdemServico $os)
     {
-        $clientes = Cliente::ativos()->orderBy('nome')->get(['id', 'nome']);
+        $clientes = Cliente::ativos()->orderBy('nome')->get([
+            'id',
+            'nome',
+            'telefone',
+            'cpf_cnpj',
+            'email',
+            'endereco',
+            'numero',
+            'complemento',
+            'bairro',
+            'cidade',
+            'estado',
+            'cep',
+        ]);
 
         $os->load('itens');
 
