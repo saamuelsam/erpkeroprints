@@ -39,7 +39,7 @@
     </div>
 </div>
 
-<div class="d-flex align-items-center mb-4 gap-3 flex-wrap">
+<div class="d-flex align-items-center mb-4 gap-3 flex-wrap no-print">
     <a href="{{ route('ordens-servico.index') }}" class="btn btn-sm btn-outline-secondary">
         <i class="fa-solid fa-arrow-left me-1"></i>Voltar
     </a>
@@ -66,33 +66,24 @@
 </div>
 
 <div class="row g-4">
-    {{-- Resumo Financeiro --}}
-    <div class="col-12 col-md-4">
-        <div class="card text-center">
-            <div class="card-body">
-                <div class="text-muted small">Valor do Orçamento</div>
-                <div class="fw-bold fs-2 text-primary">R$ {{ number_format($os->valor_final, 2, ',', '.') }}</div>
-            </div>
-        </div>
-    </div>
-    <div class="col-12 col-md-4">
-        <div class="card text-center">
-            <div class="card-body">
-                <div class="text-muted small">Cliente</div>
-                <div class="fw-semibold">{{ $os->cliente_exibicao }}</div>
-                <div class="text-muted small">{{ $os->cliente?->telefone_formatado ?? 'Venda avulsa' }}</div>
+    <div class="col-12">
+        <div class="os-summary-strip">
+            <div>
+                <span class="text-muted small d-block">Cliente</span>
+                <strong>{{ $os->cliente_exibicao }}</strong>
+                <span class="text-muted small d-block">{{ $os->cliente?->telefone_formatado ?? 'Venda avulsa' }}</span>
                 @if($os->cliente?->cpf_cnpj_formatado)
-                    <div class="text-muted small">{{ $os->cliente->cpf_cnpj_formatado }}</div>
+                    <span class="text-muted small d-block">{{ $os->cliente->cpf_cnpj_formatado }}</span>
                 @endif
             </div>
-        </div>
-    </div>
-    <div class="col-12 col-md-4">
-        <div class="card text-center">
-            <div class="card-body">
-                <div class="text-muted small">Pagamento</div>
-                <span class="badge bg-{{ $os->status_pagamento_badge }} fs-6">{{ $os->status_pagamento_label }}</span>
-                <div class="text-muted small mt-1">{{ $os->forma_pagamento ?: 'A definir' }}</div>
+            <div>
+                <span class="text-muted small d-block">Pagamento</span>
+                <strong>{{ $os->status_pagamento_label }}</strong>
+                <span class="text-muted small d-block">{{ $os->forma_pagamento ?: 'A definir' }}</span>
+            </div>
+            <div class="text-end">
+                <span class="text-muted small d-block">Valor do Orçamento</span>
+                <strong class="os-summary-total">R$ {{ number_format($os->valor_final, 2, ',', '.') }}</strong>
             </div>
         </div>
     </div>
@@ -262,6 +253,22 @@
     width: auto;
 }
 
+.os-summary-strip {
+    align-items: center;
+    background: #fff;
+    border: 1px solid #d5dbe3;
+    border-radius: 8px;
+    display: grid;
+    gap: 12px;
+    grid-template-columns: minmax(0, 1.5fr) minmax(150px, .8fr) minmax(160px, .8fr);
+    padding: 12px 16px;
+}
+
+.os-summary-total {
+    color: #0f5132;
+    font-size: 1.35rem;
+}
+
 @media print {
     .no-print,
     .sidebar,
@@ -309,6 +316,18 @@
 
     .os-logo {
         max-height: 48px !important;
+    }
+
+    .os-summary-strip {
+        border-color: #d5dbe3 !important;
+        gap: 8px !important;
+        grid-template-columns: minmax(0, 1.4fr) minmax(120px, .7fr) minmax(130px, .7fr) !important;
+        margin-bottom: 8px !important;
+        padding: 8px 10px !important;
+    }
+
+    .os-summary-total {
+        font-size: 1.05rem !important;
     }
 
     h4,
