@@ -28,9 +28,6 @@
                 @endif
                 <div class="text-muted small">
                     WhatsApp: {{ $empresaTelefone }}
-                    @if(config('app.url'))
-                        | {{ parse_url(config('app.url'), PHP_URL_HOST) ?: config('app.url') }}
-                    @endif
                 </div>
             </div>
         </div>
@@ -274,6 +271,7 @@
 
     body {
         background: #fff !important;
+        font-size: 12px !important;
     }
 
     .content-wrapper,
@@ -287,16 +285,39 @@
         border: 1px solid #d5dbe3 !important;
         box-shadow: none !important;
         break-inside: avoid;
+        margin-bottom: 8px !important;
+    }
+
+    .card-body {
+        padding: 10px 12px !important;
+    }
+
+    .card-header {
+        padding: 8px 12px !important;
+    }
+
+    .row {
+        --bs-gutter-x: .75rem !important;
+        --bs-gutter-y: .75rem !important;
     }
 
     .os-company-header {
         border-color: #111827 !important;
-        margin-bottom: 14px !important;
-        padding: 12px 14px !important;
+        margin-bottom: 10px !important;
+        padding: 10px 12px !important;
     }
 
     .os-logo {
-        max-height: 58px !important;
+        max-height: 48px !important;
+    }
+
+    h4,
+    .fs-2 {
+        font-size: 1.25rem !important;
+    }
+
+    .table > :not(caption) > * > * {
+        padding: .35rem .45rem !important;
     }
 }
 </style>
