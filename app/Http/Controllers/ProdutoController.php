@@ -185,9 +185,13 @@ class ProdutoController extends Controller
             return response()->json([]);
         }
 
+        $limite = min(max((int) $request->input('limit', 50), 1), 100);
+        $termoLike = "%{$termo}%";
+        $termoInicio = "{$termo}%";
+
         $query = Produto::ativos()
             ->select(['id', 'nome', 'codigo_interno', 'codigo_barras', 'preco_venda', 'custo_unitario', 'quantidade_estoque', 'unidade_medida'])
-            ->limit(10);
+            ->limit($limite);
 
         if ($request->boolean('exact')) {
             $query->where(function ($q) use ($termo) {
@@ -195,7 +199,18 @@ class ProdutoController extends Controller
                     ->orWhere('codigo_interno', $termo);
             });
         } else {
-            $query->busca($termo)->orderBy('nome');
+            $query->busca($termo)
+                ->orderByRaw(
+                    'CASE
+                        WHEN codigo_barras = ? OR codigo_interno = ? THEN 0
+                        WHEN nome LIKE ? THEN 1
+                        WHEN nome LIKE ? THEN 2
+                        WHEN codigo_interno LIKE ? OR codigo_barras LIKE ? THEN 3
+                        ELSE 4
+                    END',
+                    [$termo, $termo, $termoInicio, $termoLike, $termoLike, $termoLike]
+                )
+                ->orderBy('nome');
         }
 
         $produtos = $query->get();

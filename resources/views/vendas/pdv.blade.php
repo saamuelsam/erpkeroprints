@@ -122,7 +122,7 @@
                         <i class="fa-solid fa-search"></i>
                     </button>
                 </div>
-                <div id="resultadoBusca" class="list-group mt-2" style="display:none"></div>
+                <div id="resultadoBusca" class="list-group mt-2" style="display:none;max-height:520px;overflow-y:auto;"></div>
             </div>
         </div>
 

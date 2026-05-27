@@ -154,7 +154,7 @@
                                 <input type="text" id="busca-produto" class="form-control"
                                        placeholder="Digite, cole ou leia o QR/código do produto...">
                             </div>
-                            <div id="resultado-busca" class="list-group position-absolute" style="z-index:1000;min-width:300px;display:none;"></div>
+                            <div id="resultado-busca" class="list-group position-absolute" style="z-index:1000;min-width:300px;max-height:520px;overflow-y:auto;display:none;"></div>
                         </div>
                         <div class="col-auto">
                             <button type="button" class="btn btn-sm btn-outline-secondary" id="btn-add-avulso">

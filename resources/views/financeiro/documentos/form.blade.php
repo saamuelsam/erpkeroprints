@@ -119,7 +119,7 @@
                         <input type="text" id="buscaProdutoDocumento" class="form-control"
                                placeholder="Digite, cole ou leia o QR/código do produto...">
                     </div>
-                    <div id="resultadoBuscaProdutoDocumento" class="list-group position-absolute" style="z-index:1000;min-width:300px;display:none;"></div>
+                    <div id="resultadoBuscaProdutoDocumento" class="list-group position-absolute" style="z-index:1000;min-width:300px;max-height:520px;overflow-y:auto;display:none;"></div>
                 </div>
             </div>
         </div>
