@@ -600,7 +600,7 @@ scanInput.addEventListener('input', () => {
     if (q.length < 2) { resultadoBusca.style.display = 'none'; return; }
     clearTimeout(window.buscaTimer);
     clearTimeout(leituraTimer);
-    leituraTimer = setTimeout(() => processarLeituraOuBusca(q), 180);
+    leituraTimer = setTimeout(() => processarLeituraOuBusca(q), 220);
 });
 
 scanInput.addEventListener('keydown', event => {
@@ -611,7 +611,8 @@ scanInput.addEventListener('keydown', event => {
 });
 
 document.getElementById('btnBuscarProduto').addEventListener('click', () => {
-    buscarProdutos(scanInput.value).then(renderResultados);
+    clearTimeout(leituraTimer);
+    processarLeituraOuBusca(scanInput.value, true);
 });
 
 function limparLeitura() {
@@ -629,7 +630,7 @@ function marcarLeitura(codigo) {
     ultimaLeituraProcessada = { codigo, momento: Date.now() };
 }
 
-function processarLeituraOuBusca(valor, forcarExato = false) {
+function processarLeituraOuBusca(valor, acionadoManualmente = false) {
     const q = normalizarLeitura(valor);
     if (!q || leituraEmAndamento || leituraDuplicada(q)) return;
 
@@ -643,16 +644,24 @@ function processarLeituraOuBusca(valor, forcarExato = false) {
                 return null;
             }
 
-            if (forcarExato) {
-                limparLeitura();
-                notificar('warning', 'Produto não encontrado', `Nenhum produto com o código ${q}.`);
-                return null;
-            }
-
             return buscarProdutos(q);
         })
         .then(produtos => {
-            if (produtos) renderResultados(produtos);
+            if (!produtos) return;
+
+            if (produtos.length === 1 && acionadoManualmente) {
+                marcarLeitura(q);
+                adicionarProduto(produtos[0]);
+                return;
+            }
+
+            if (!produtos.length && acionadoManualmente) {
+                limparLeitura();
+                notificar('warning', 'Produto nao encontrado', `Nenhum produto encontrado para ${q}.`);
+                return;
+            }
+
+            renderResultados(produtos);
         })
         .catch(() => notificar('error', 'Falha na leitura', 'Não foi possível buscar o produto agora.'))
         .finally(() => {

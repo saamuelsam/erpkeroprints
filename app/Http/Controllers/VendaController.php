@@ -22,11 +22,13 @@ class VendaController extends Controller
 
     public function index(Request $request)
     {
-        $query = Venda::with('cliente', 'responsavel');
+        $query = Venda::with('cliente', 'responsavel', 'ordemServico');
 
         if ($busca = $request->input('busca')) {
             $query->where(function ($q) use ($busca) {
                 $q->where('numero', 'like', "%{$busca}%")
+                    ->orWhereHas('ordemServico', fn($os) => $os->where('numero_os', 'like', "%{$busca}%"))
+                    ->orWhereHas('ordemServico', fn($os) => $os->where('cliente_nome', 'like', "%{$busca}%"))
                     ->orWhereHas('cliente', fn($c) => $c->where('nome', 'like', "%{$busca}%"));
             });
         }

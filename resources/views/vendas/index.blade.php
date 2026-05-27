@@ -60,9 +60,16 @@
                     <tbody>
                         @foreach($vendas as $venda)
                             <tr>
-                                <td class="fw-bold">{{ $venda->numero }}</td>
+                                <td class="fw-bold">
+                                    {{ $venda->numero }}
+                                    @if($venda->ordemServico)
+                                        <a href="{{ route('ordens-servico.show', $venda->ordemServico) }}" class="badge bg-info-subtle text-info text-decoration-none ms-1">
+                                            {{ $venda->ordemServico->numero_os }}
+                                        </a>
+                                    @endif
+                                </td>
                                 <td class="text-muted small">{{ $venda->created_at->format('d/m/Y H:i') }}</td>
-                                <td>{{ $venda->cliente->nome ?? 'Consumidor final' }}</td>
+                                <td>{{ $venda->cliente->nome ?? $venda->ordemServico?->cliente_exibicao ?? 'Consumidor final' }}</td>
                                 <td>{{ $venda->forma_pagamento_label }}</td>
                                 <td><span class="badge bg-{{ $venda->status_badge }}">{{ $venda->status_label }}</span></td>
                                 <td class="text-end fw-semibold">R$ {{ number_format($venda->valor_total, 2, ',', '.') }}</td>

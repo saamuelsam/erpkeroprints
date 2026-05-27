@@ -14,6 +14,7 @@ class Venda extends Model
     protected $fillable = [
         'numero',
         'cliente_id',
+        'ordem_servico_id',
         'user_id',
         'subtotal',
         'desconto',
@@ -72,6 +73,11 @@ class Venda extends Model
     public function cliente(): BelongsTo
     {
         return $this->belongsTo(Cliente::class);
+    }
+
+    public function ordemServico(): BelongsTo
+    {
+        return $this->belongsTo(OrdemServico::class);
     }
 
     public function responsavel(): BelongsTo

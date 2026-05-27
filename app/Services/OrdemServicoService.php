@@ -4,9 +4,11 @@ namespace App\Services;
 
 use App\Models\OrdemServico;
 use App\Models\EstoqueMovimentacao;
+use App\Models\FinanceiroEntrada;
 use App\Models\OrdemServicoItem;
 use App\Models\OrdemServicoHistorico;
 use App\Models\Produto;
+use App\Models\Venda;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
@@ -62,15 +64,7 @@ class OrdemServicoService
             $os = $this->criar($dados, $itens);
 
             $this->baixarEstoqueMateriais($os);
-            $this->caixaService->registrarEntradaAutomatica(
-                descricao: "Recebimento da OS #{$os->numero_os}",
-                valor: (float) $os->valor_final,
-                categoria: 'PAGAMENTO_OS',
-                formaPagamento: $os->forma_pagamento ?: 'A combinar',
-                clienteId: $os->cliente_id,
-                origemTipo: 'os',
-                origemId: $os->id
-            );
+            $this->registrarVendaRecebidaDaOs($os);
 
             return $os->fresh(['itens', 'cliente']);
         });
@@ -109,6 +103,14 @@ class OrdemServicoService
                 if ($dados['status'] === 'FINALIZADA') {
                     $this->baixarEstoqueMateriais($os);
                 }
+            }
+
+            $statusFinal = $dados['status'] ?? $os->status;
+            $pagamentoFinal = $dados['status_pagamento'] ?? $os->status_pagamento;
+
+            if ($pagamentoFinal === 'PAGO' && in_array($statusFinal, ['FINALIZADA', 'ENTREGUE'], true)) {
+                $this->baixarEstoqueMateriais($os);
+                $this->registrarVendaRecebidaDaOs($os->fresh(['itens', 'cliente']));
             }
 
             return $os->fresh(['itens', 'cliente']);
@@ -273,6 +275,128 @@ class OrdemServicoService
                 );
             }
         }
+    }
+
+    private function criarVendaDaOs(OrdemServico $os): Venda
+    {
+        $existente = Venda::where('ordem_servico_id', $os->id)
+            ->where('status', '!=', 'CANCELADA')
+            ->first();
+
+        if ($existente) {
+            return $existente;
+        }
+
+        $os->loadMissing('itens');
+        $subtotal = round((float) $os->valor_final + (float) $os->desconto, 2);
+
+        $venda = Venda::create([
+            'numero' => Venda::gerarNumero(),
+            'cliente_id' => $os->cliente_id,
+            'ordem_servico_id' => $os->id,
+            'user_id' => Auth::id(),
+            'subtotal' => $subtotal,
+            'desconto' => (float) $os->desconto,
+            'valor_total' => (float) $os->valor_final,
+            'valor_recebido' => null,
+            'troco' => 0,
+            'forma_pagamento' => $this->mapearFormaPagamentoVenda($os->forma_pagamento),
+            'status' => 'PAGA',
+            'pago_em' => now(),
+        ]);
+
+        if ($os->itens->isEmpty()) {
+            $venda->itens()->create([
+                'produto_id' => null,
+                'descricao' => "OS #{$os->numero_os} - " . ($os->descricao_servico ?: 'Servico avulso'),
+                'quantidade' => 1,
+                'preco_unitario' => (float) $os->valor_final,
+                'custo_unitario' => (float) $os->custo_total,
+                'total_item' => (float) $os->valor_final,
+            ]);
+
+            return $venda;
+        }
+
+        foreach ($os->itens as $item) {
+            $venda->itens()->create([
+                'produto_id' => $item->produto_id,
+                'descricao' => $item->descricao_item,
+                'quantidade' => (float) $item->quantidade,
+                'preco_unitario' => (float) $item->preco_unitario,
+                'custo_unitario' => (float) $item->custo_unitario,
+                'total_item' => (float) $item->total_item,
+            ]);
+        }
+
+        $valorItens = (float) $os->itens->sum('total_item');
+        $valorServico = max(0, round((float) $os->valor_servico + (float) $os->custos_adicionais, 2));
+
+        if ($valorServico > 0) {
+            $venda->itens()->create([
+                'produto_id' => null,
+                'descricao' => "OS #{$os->numero_os} - Servico",
+                'quantidade' => 1,
+                'preco_unitario' => $valorServico,
+                'custo_unitario' => 0,
+                'total_item' => $valorServico,
+            ]);
+        }
+
+        $subtotalCalculado = round($valorItens + $valorServico, 2);
+        if (abs($subtotalCalculado - $subtotal) > 0.009) {
+            $venda->update(['subtotal' => $subtotalCalculado]);
+        }
+
+        return $venda;
+    }
+
+    private function registrarVendaRecebidaDaOs(OrdemServico $os): Venda
+    {
+        $venda = $this->criarVendaDaOs($os);
+
+        FinanceiroEntrada::where('origem_tipo', 'os')
+            ->where('origem_id', $os->id)
+            ->where('status', '!=', 'CANCELADA')
+            ->update([
+                'origem_tipo' => 'venda',
+                'origem_id' => $venda->id,
+            ]);
+
+        $this->caixaService->registrarEntradaAutomatica(
+            descricao: "Recebimento da OS #{$os->numero_os}",
+            valor: (float) $os->valor_final,
+            categoria: 'PAGAMENTO_OS',
+            formaPagamento: $os->forma_pagamento ?: 'A combinar',
+            clienteId: $os->cliente_id,
+            origemTipo: 'venda',
+            origemId: $venda->id
+        );
+
+        return $venda;
+    }
+
+    private function mapearFormaPagamentoVenda(?string $formaPagamento): string
+    {
+        $forma = strtolower(iconv('UTF-8', 'ASCII//TRANSLIT', $formaPagamento ?? '') ?: ($formaPagamento ?? ''));
+
+        if (str_contains($forma, 'dinheiro')) {
+            return 'DINHEIRO';
+        }
+
+        if (str_contains($forma, 'pix')) {
+            return 'PIX';
+        }
+
+        if (str_contains($forma, 'debito')) {
+            return 'CARTAO_DEBITO';
+        }
+
+        if (str_contains($forma, 'credito')) {
+            return 'CARTAO_CREDITO';
+        }
+
+        return 'OUTROS';
     }
 
     private function normalizarDados(array $dados): array
