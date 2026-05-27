@@ -214,6 +214,13 @@
             </div>
         </div>
     </div>
+
+    <div class="col-12">
+        <div class="os-signature">
+            <div class="os-signature-line"></div>
+            <div class="os-signature-label">Assinatura: <span>(Autorização do Cliente)</span></div>
+        </div>
+    </div>
 </div>
 @endsection
 
@@ -229,6 +236,26 @@
 .os-logo {
     max-height: 64px;
     width: auto;
+}
+
+.os-signature {
+    margin: 28px auto 0;
+    max-width: 520px;
+    text-align: center;
+}
+
+.os-signature-line {
+    border-top: 1px solid #111827;
+    height: 1px;
+    margin-bottom: 8px;
+}
+
+.os-signature-label {
+    font-weight: 700;
+}
+
+.os-signature-label span {
+    font-weight: 500;
 }
 
 @media print {
@@ -287,6 +314,11 @@
 
     .table > :not(caption) > * > * {
         padding: .35rem .45rem !important;
+    }
+
+    .os-signature {
+        margin-top: 18px !important;
+        max-width: 460px !important;
     }
 }
 </style>
