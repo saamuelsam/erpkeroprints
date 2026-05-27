@@ -12,7 +12,35 @@
         'FINALIZADA' => 'ENTREGUE',
     ];
     $proximoStatus = $proximosStatus[$os->status] ?? null;
+    $empresaEndereco = env('EMPRESA_ENDERECO');
+    $empresaTelefone = env('EMPRESA_TELEFONE', '(85) 9 9666-4893');
 @endphp
+
+<div class="os-company-header mb-4">
+    <div class="d-flex align-items-center justify-content-between gap-3 flex-wrap">
+        <div class="d-flex align-items-center gap-3">
+            <img src="{{ asset('images/logo-color.png') }}" alt="Kero Prints Gráfica e Papelaria" class="os-logo">
+            <div>
+                <div class="fw-bold fs-5">Kero Prints Gráfica e Papelaria</div>
+                <div class="text-muted small">Ordem de Serviço / Orçamento</div>
+                @if($empresaEndereco)
+                    <div class="text-muted small">{{ $empresaEndereco }}</div>
+                @endif
+                <div class="text-muted small">
+                    WhatsApp: {{ $empresaTelefone }}
+                    @if(config('app.url'))
+                        | {{ parse_url(config('app.url'), PHP_URL_HOST) ?: config('app.url') }}
+                    @endif
+                </div>
+            </div>
+        </div>
+        <div class="text-end">
+            <div class="text-muted small">Nº da OS</div>
+            <div class="fw-bold fs-5">{{ $os->numero_os }}</div>
+            <span class="badge bg-{{ $os->status_badge }}">{{ $os->status_label }}</span>
+        </div>
+    </div>
+</div>
 
 <div class="d-flex align-items-center mb-4 gap-3 flex-wrap">
     <a href="{{ route('ordens-servico.index') }}" class="btn btn-sm btn-outline-secondary">
@@ -42,27 +70,15 @@
 
 <div class="row g-4">
     {{-- Resumo Financeiro --}}
-    <div class="col-12 col-md-3">
+    <div class="col-12 col-md-4">
         <div class="card text-center">
             <div class="card-body">
-                <div class="text-muted small">Valor Final</div>
+                <div class="text-muted small">Valor do Orçamento</div>
                 <div class="fw-bold fs-2 text-primary">R$ {{ number_format($os->valor_final, 2, ',', '.') }}</div>
-                <div class="text-muted small">Custo: R$ {{ number_format($os->custo_total, 2, ',', '.') }}</div>
             </div>
         </div>
     </div>
-    <div class="col-12 col-md-3">
-        <div class="card text-center">
-            <div class="card-body">
-                <div class="text-muted small">Lucro</div>
-                <div class="fw-bold fs-2 {{ $os->lucro >= 0 ? 'text-success' : 'text-danger' }}">
-                    R$ {{ number_format($os->lucro, 2, ',', '.') }}
-                </div>
-                <div class="text-muted small">Margem: {{ number_format($os->margem, 1, ',', '.') }}%</div>
-            </div>
-        </div>
-    </div>
-    <div class="col-12 col-md-3">
+    <div class="col-12 col-md-4">
         <div class="card text-center">
             <div class="card-body">
                 <div class="text-muted small">Cliente</div>
@@ -74,7 +90,7 @@
             </div>
         </div>
     </div>
-    <div class="col-12 col-md-3">
+    <div class="col-12 col-md-4">
         <div class="card text-center">
             <div class="card-body">
                 <div class="text-muted small">Pagamento</div>
@@ -206,7 +222,6 @@
                                 <tr>
                                     <th>Item</th>
                                     <th class="text-end">Qtd</th>
-                                    <th class="text-end">Custo Unit.</th>
                                     <th class="text-end">Preço Unit.</th>
                                     <th class="text-end">Total</th>
                                 </tr>
@@ -216,7 +231,6 @@
                                 <tr>
                                     <td>{{ $item->descricao_item }}</td>
                                     <td class="text-end">{{ number_format($item->quantidade, 2, ',', '.') }}</td>
-                                    <td class="text-end text-muted">R$ {{ number_format($item->custo_unitario, 2, ',', '.') }}</td>
                                     <td class="text-end">R$ {{ number_format($item->preco_unitario, 2, ',', '.') }}</td>
                                     <td class="text-end fw-semibold">R$ {{ number_format($item->total_item, 2, ',', '.') }}</td>
                                 </tr>
@@ -224,7 +238,7 @@
                             </tbody>
                             <tfoot class="table-light">
                                 <tr>
-                                    <td colspan="4" class="text-end fw-bold">Total dos Itens:</td>
+                                    <td colspan="3" class="text-end fw-bold">Total dos Itens:</td>
                                     <td class="text-end fw-bold">R$ {{ number_format($os->itens->sum('total_item'), 2, ',', '.') }}</td>
                                 </tr>
                             </tfoot>
@@ -239,6 +253,18 @@
 
 @push('styles')
 <style>
+.os-company-header {
+    background: #fff;
+    border: 1px solid #d5dbe3;
+    border-radius: 8px;
+    padding: 18px 20px;
+}
+
+.os-logo {
+    max-height: 64px;
+    width: auto;
+}
+
 @media print {
     .no-print,
     .sidebar,
@@ -261,6 +287,16 @@
         border: 1px solid #d5dbe3 !important;
         box-shadow: none !important;
         break-inside: avoid;
+    }
+
+    .os-company-header {
+        border-color: #111827 !important;
+        margin-bottom: 14px !important;
+        padding: 12px 14px !important;
+    }
+
+    .os-logo {
+        max-height: 58px !important;
     }
 }
 </style>
