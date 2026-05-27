@@ -239,7 +239,7 @@
 }
 
 .os-signature {
-    margin: 54px auto 0;
+    margin: 76px auto 0;
     max-width: 520px;
     text-align: center;
 }
@@ -317,7 +317,7 @@
     }
 
     .os-signature {
-        margin-top: 42px !important;
+        margin-top: 60px !important;
         max-width: 460px !important;
     }
 }
