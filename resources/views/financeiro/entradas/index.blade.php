@@ -151,25 +151,26 @@
                             <td class="text-end">
                                 @if($entrada->trashed())
                                     <span class="text-muted small">{{ $entrada->deleted_at?->format('d/m/Y H:i') }}</span>
-                                @elseif($venda)
-                                    <button class="btn btn-sm btn-outline-primary" type="button"
-                                            data-bs-toggle="collapse" data-bs-target="#vendaItens{{ $entrada->id }}"
-                                            aria-expanded="false" aria-controls="vendaItens{{ $entrada->id }}"
-                                            title="Ver produtos vendidos">
-                                        <i class="fa-solid fa-receipt"></i>
-                                    </button>
-                                @elseif(!$entrada->origem_tipo)
-                                <div class="d-flex gap-1 justify-content-end">
-                                    <a href="{{ route('financeiro.entradas.edit', $entrada) }}" class="btn btn-sm btn-outline-secondary" title="Editar">
-                                        <i class="fa-solid fa-pen"></i>
-                                    </a>
-                                    <form method="POST" action="{{ route('financeiro.entradas.destroy', $entrada) }}" onsubmit="return confirm('Tem certeza que deseja excluir esta entrada?')">
-                                        @csrf @method('DELETE')
-                                        <button class="btn btn-sm btn-outline-danger" title="Excluir"><i class="fa-solid fa-trash"></i></button>
-                                    </form>
-                                </div>
                                 @else
-                                    <span class="text-muted small">—</span>
+                                    <div class="d-flex gap-1 justify-content-end">
+                                        @if($venda)
+                                            <button class="btn btn-sm btn-outline-primary" type="button"
+                                                    data-bs-toggle="collapse" data-bs-target="#vendaItens{{ $entrada->id }}"
+                                                    aria-expanded="false" aria-controls="vendaItens{{ $entrada->id }}"
+                                                    title="Ver produtos vendidos">
+                                                <i class="fa-solid fa-receipt"></i>
+                                            </button>
+                                        @elseif(!$entrada->origem_tipo)
+                                            <a href="{{ route('financeiro.entradas.edit', $entrada) }}" class="btn btn-sm btn-outline-secondary" title="Editar">
+                                                <i class="fa-solid fa-pen"></i>
+                                            </a>
+                                        @endif
+                                        <form method="POST" action="{{ route('financeiro.entradas.destroy', $entrada) }}"
+                                              onsubmit="return confirm('Remover esta entrada apenas do financeiro? Vendas, produtos e estoque vinculados nao serao apagados.')">
+                                            @csrf @method('DELETE')
+                                            <button class="btn btn-sm btn-outline-danger" title="Excluir entrada"><i class="fa-solid fa-trash"></i></button>
+                                        </form>
+                                    </div>
                                 @endif
                             </td>
                         </tr>

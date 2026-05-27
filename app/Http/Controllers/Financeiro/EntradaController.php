@@ -118,13 +118,9 @@ class EntradaController extends Controller
 
     public function destroy(FinanceiroEntrada $entrada)
     {
-        if ($entrada->origem_tipo) {
-            return back()->with('erro', 'Entradas automáticas não podem ser excluídas.');
-        }
-
         $entrada->delete();
 
         return redirect()->route('financeiro.entradas.index')
-            ->with('sucesso', 'Entrada removida com sucesso!');
+            ->with('sucesso', 'Entrada removida do financeiro com sucesso. Vendas vinculadas nao foram apagadas.');
     }
 }
