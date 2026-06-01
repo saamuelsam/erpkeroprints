@@ -14,7 +14,7 @@ class OrdemServicoRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'acao'                   => ['nullable', 'in:salvar,pagar_agora'],
+            'acao'                   => ['nullable', 'in:salvar,salvar_imprimir_etiqueta,pagar_agora,pagar_imprimir_etiqueta'],
             'cliente_id'             => ['nullable', 'exists:clientes,id'],
             'cliente_nome'           => ['nullable', 'string', 'max:150'],
             'data_prevista_entrega'  => ['nullable', 'date', 'after_or_equal:today'],
@@ -24,7 +24,7 @@ class OrdemServicoRequest extends FormRequest
             'valor_servico'          => ['nullable', 'numeric', 'min:0'],
             'custos_adicionais'      => ['nullable', 'numeric', 'min:0'],
             'desconto'               => ['nullable', 'numeric', 'min:0'],
-            'forma_pagamento'        => ['nullable', 'required_if:acao,pagar_agora', 'string', 'max:50'],
+            'forma_pagamento'        => ['nullable', 'required_if:acao,pagar_agora,pagar_imprimir_etiqueta', 'string', 'max:50'],
             'status'                 => ['nullable', 'in:ABERTA,PRODUCAO,AGUARDANDO_APROVACAO,FINALIZADA,ENTREGUE,CANCELADA'],
             'status_pagamento'       => ['nullable', 'in:PENDENTE,PAGO_PARCIAL,PAGO'],
 

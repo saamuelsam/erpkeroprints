@@ -256,8 +256,14 @@
                     {{ $os->exists ? 'Salvar alterações' : 'Criar Ordem de Serviço' }}
                 </button>
                 @if(!$os->exists)
+                    <button type="submit" name="acao" value="salvar_imprimir_etiqueta" class="btn btn-outline-primary btn-lg">
+                        <i class="fa-solid fa-tag me-2"></i>Salvar e Imprimir Etiqueta
+                    </button>
                     <button type="submit" name="acao" value="pagar_agora" class="btn btn-success btn-lg">
                         <i class="fa-solid fa-cash-register me-2"></i>Finalizar e Receber Agora
+                    </button>
+                    <button type="submit" name="acao" value="pagar_imprimir_etiqueta" class="btn btn-outline-success btn-lg">
+                        <i class="fa-solid fa-print me-2"></i>Finalizar, Receber e Imprimir
                     </button>
                 @endif
                 <a href="{{ route('ordens-servico.index') }}" class="btn btn-outline-secondary">Cancelar</a>

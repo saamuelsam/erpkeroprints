@@ -57,6 +57,8 @@ Route::middleware(['auth'])->group(function () {
          ->name('ordens-servico.producao');
     Route::patch('ordens-servico/{os}/status-rapido', [OrdemServicoController::class, 'atualizarStatusRapido'])
          ->name('ordens-servico.status-rapido');
+    Route::get('ordens-servico/{os}/etiqueta', [OrdemServicoController::class, 'etiqueta'])
+         ->name('ordens-servico.etiqueta');
     Route::resource('ordens-servico', OrdemServicoController::class)
          ->parameters(['ordens-servico' => 'os']);
 

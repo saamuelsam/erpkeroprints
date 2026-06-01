@@ -111,6 +111,9 @@
                                     <a href="{{ route('ordens-servico.show', $os) }}" class="btn btn-sm btn-outline-primary" title="Ver">
                                         <i class="fa-solid fa-eye"></i>
                                     </a>
+                                    <a href="{{ route('ordens-servico.etiqueta', $os) }}" class="btn btn-sm btn-outline-primary" title="Imprimir etiqueta">
+                                        <i class="fa-solid fa-tag"></i>
+                                    </a>
                                     <a href="{{ route('ordens-servico.edit', $os) }}" class="btn btn-sm btn-outline-secondary" title="Editar">
                                         <i class="fa-solid fa-pen"></i>
                                     </a>

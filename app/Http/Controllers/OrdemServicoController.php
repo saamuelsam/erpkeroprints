@@ -107,12 +107,23 @@ class OrdemServicoController extends Controller
         try {
             $dados = $request->safe()->except(['itens', 'acao']);
             $itens = $request->input('itens', []);
-            $os = $request->input('acao') === 'pagar_agora'
+            $acao = $request->input('acao', 'salvar');
+            $receberAgora = in_array($acao, ['pagar_agora', 'pagar_imprimir_etiqueta'], true);
+            $imprimirEtiqueta = in_array($acao, ['salvar_imprimir_etiqueta', 'pagar_imprimir_etiqueta'], true);
+
+            $os = $receberAgora
                 ? $this->osService->criarEReceber($dados, $itens)
                 : $this->osService->criar($dados, $itens);
 
+            if ($imprimirEtiqueta) {
+                return redirect()->route('ordens-servico.etiqueta', $os)
+                    ->with('sucesso', $receberAgora
+                        ? "OS #{$os->numero_os} finalizada e recebida. A etiqueta esta pronta para impressao."
+                        : "OS #{$os->numero_os} criada. A etiqueta esta pronta para impressao.");
+            }
+
             return redirect()->route('ordens-servico.show', $os)
-                ->with('sucesso', $request->input('acao') === 'pagar_agora'
+                ->with('sucesso', $receberAgora
                     ? "OS #{$os->numero_os} finalizada e recebida com sucesso!"
                     : "OS #{$os->numero_os} criada com sucesso!");
         } catch (\Exception $e) {
@@ -130,6 +141,13 @@ class OrdemServicoController extends Controller
         ]);
 
         return view('ordens-servico.show', compact('os'));
+    }
+
+    public function etiqueta(OrdemServico $os)
+    {
+        $os->load(['cliente', 'itens']);
+
+        return view('ordens-servico.etiqueta', compact('os'));
     }
 
     public function edit(OrdemServico $os)

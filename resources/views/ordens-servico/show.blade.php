@@ -47,8 +47,11 @@
     <span class="badge bg-{{ $os->status_badge }} fs-6">{{ $os->status_label }}</span>
     <div class="ms-auto d-flex gap-2 flex-wrap">
         <button type="button" class="btn btn-sm btn-outline-secondary no-print" onclick="window.print()">
-            <i class="fa-solid fa-print me-1"></i>Imprimir comprovante
+            <i class="fa-solid fa-print me-1"></i>Imprimir pedido
         </button>
+        <a href="{{ route('ordens-servico.etiqueta', $os) }}" class="btn btn-sm btn-outline-primary no-print">
+            <i class="fa-solid fa-tag me-1"></i>Imprimir etiqueta
+        </a>
         @if($proximoStatus)
             <form method="POST" action="{{ route('ordens-servico.status-rapido', $os) }}" class="no-print">
                 @csrf
