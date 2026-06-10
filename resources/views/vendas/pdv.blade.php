@@ -7,11 +7,11 @@
 <style>
     .pdv-shell { align-items: start; display: grid; grid-template-columns: minmax(0, 1fr) 390px; gap: 16px; }
     .pdv-main { min-width: 0; }
-    .pdv-side { position: sticky; top: 82px; }
+    .pdv-side { position: sticky; top: 124px; }
     .pdv-payment-card .card-body { max-height: calc(100vh - 142px); overflow-y: auto; }
     .pdv-cart { max-height: calc(100vh - 315px); overflow-y: auto; }
     .pdv-total { font-size: 2.4rem; line-height: 1; }
-    .pdv-scan-input { font-size: 1.2rem; height: 54px; }
+    .pdv-scan-input { font-size: 1rem; height: 44px; }
     .pdv-item-active { background: #FFFBEA; }
     .pix-box {
         background: #F8FAFC;

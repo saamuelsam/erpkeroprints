@@ -11,7 +11,7 @@
 
         body {
             font-family: 'Inter', sans-serif;
-            background: linear-gradient(135deg, #0d1117 0%, #161b27 50%, #0d1117 100%);
+            background: #171b23;
             min-height: 100vh;
             display: flex;
             align-items: center;
@@ -20,14 +20,13 @@
         }
 
         .login-card {
-            background: rgba(255,255,255,0.03);
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 20px;
-            padding: 48px 40px;
+            background: #202630;
+            border: 1px solid #343c49;
+            border-radius: 8px;
+            padding: 36px 34px;
             width: 100%;
             max-width: 400px;
-            box-shadow: 0 25px 50px rgba(0,0,0,0.5);
+            box-shadow: 0 18px 40px rgba(0,0,0,0.28);
         }
 
         .brand {
@@ -39,14 +38,14 @@
             width: 68px;
             height: 68px;
             background: #FFD000;
-            border-radius: 18px;
+            border-radius: 8px;
             display: flex;
             align-items: center;
             justify-content: center;
             margin: 0 auto 16px;
             font-size: 1.9rem;
             color: #111;
-            box-shadow: 0 8px 30px rgba(255,208,0,0.5);
+            box-shadow: none;
         }
 
         .brand h1 {
@@ -119,7 +118,7 @@
             padding: 12px 46px 12px 42px;
             background: rgba(255,255,255,0.06);
             border: 1px solid rgba(255,255,255,0.12);
-            border-radius: 10px;
+            border-radius: 6px;
             color: #fff;
             font-family: 'Inter', sans-serif;
             font-size: 0.9rem;
@@ -173,21 +172,20 @@
             padding: 13px;
             background: #FFD000;
             border: none;
-            border-radius: 10px;
+            border-radius: 6px;
             color: #111827;
             font-family: 'Inter', sans-serif;
             font-size: 0.95rem;
             font-weight: 700;
             cursor: pointer;
             transition: all 0.2s;
-            box-shadow: 0 4px 18px rgba(255,208,0,0.4);
-            letter-spacing: -0.2px;
+            box-shadow: none;
+            letter-spacing: 0;
         }
 
         .btn-login:hover {
-            transform: translateY(-1px);
             background: #E6BB00;
-            box-shadow: 0 6px 24px rgba(255,208,0,0.5);
+            box-shadow: none;
         }
 
         .btn-login:active { transform: translateY(0); }
@@ -199,27 +197,6 @@
             font-size: 0.78rem;
         }
 
-        /* Glow decorativo */
-        body::before {
-            content: '';
-            position: fixed;
-            top: -50%;
-            left: -50%;
-            width: 100%;
-            height: 100%;
-            background: radial-gradient(circle at 30% 30%, rgba(255,208,0,0.06) 0%, transparent 70%);
-            pointer-events: none;
-        }
-        body::after {
-            content: '';
-            position: fixed;
-            bottom: -30%;
-            right: -20%;
-            width: 60%;
-            height: 60%;
-            background: radial-gradient(circle, rgba(236,0,140,0.04) 0%, transparent 70%);
-            pointer-events: none;
-        }
     </style>
 </head>
 <body>

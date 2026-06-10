@@ -264,7 +264,9 @@
 @media print {
     .no-print,
     .sidebar,
-    .topbar {
+    .topbar,
+    .app-header,
+    .app-nav {
         display: none !important;
     }
 
