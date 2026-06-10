@@ -55,6 +55,7 @@
                             <th>Status</th>
                             <th class="text-end">Total</th>
                             <th class="text-end">Troco</th>
+                            <th class="text-end">Ações</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -69,7 +70,7 @@
                                     @endif
                                 </td>
                                 <td class="text-muted small">{{ $venda->created_at->format('d/m/Y H:i') }}</td>
-                                <td>{{ $venda->cliente->nome ?? $venda->ordemServico?->cliente_exibicao ?? 'Consumidor final' }}</td>
+                                <td>{{ $venda->cliente_exibicao }}</td>
                                 <td>{{ $venda->forma_pagamento_label }}</td>
                                 <td><span class="badge bg-{{ $venda->status_badge }}">{{ $venda->status_label }}</span></td>
                                 <td class="text-end fw-semibold">R$ {{ number_format($venda->valor_total, 2, ',', '.') }}</td>
@@ -79,6 +80,11 @@
                                     @else
                                         —
                                     @endif
+                                </td>
+                                <td class="text-end">
+                                    <a href="{{ route('vendas.comprovante', $venda) }}" class="btn btn-sm btn-outline-secondary" title="Imprimir comprovante">
+                                        <i class="fa-solid fa-print"></i>
+                                    </a>
                                 </td>
                             </tr>
                         @endforeach

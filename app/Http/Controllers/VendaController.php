@@ -27,6 +27,7 @@ class VendaController extends Controller
         if ($busca = $request->input('busca')) {
             $query->where(function ($q) use ($busca) {
                 $q->where('numero', 'like', "%{$busca}%")
+                    ->orWhere('cliente_nome', 'like', "%{$busca}%")
                     ->orWhereHas('ordemServico', fn($os) => $os->where('numero_os', 'like', "%{$busca}%"))
                     ->orWhereHas('ordemServico', fn($os) => $os->where('cliente_nome', 'like', "%{$busca}%"))
                     ->orWhereHas('cliente', fn($c) => $c->where('nome', 'like', "%{$busca}%"));
@@ -59,10 +60,18 @@ class VendaController extends Controller
         return view('vendas.cliente');
     }
 
+    public function comprovante(Venda $venda)
+    {
+        $venda->load(['cliente', 'itens', 'responsavel', 'ordemServico']);
+
+        return view('vendas.comprovante', compact('venda'));
+    }
+
     public function store(Request $request)
     {
         $validated = $request->validate([
             'cliente_id' => ['nullable', 'exists:clientes,id'],
+            'cliente_nome' => ['nullable', 'string', 'max:150'],
             'forma_pagamento' => ['required', 'in:DINHEIRO,PIX,CARTAO_DEBITO,CARTAO_CREDITO,OUTROS,MISTO'],
             'desconto' => ['nullable', 'numeric', 'min:0'],
             'valor_recebido' => ['nullable', 'required_if:forma_pagamento,DINHEIRO', 'numeric', 'min:0'],
@@ -187,6 +196,9 @@ class VendaController extends Controller
         return [
             'id' => $venda->id,
             'numero' => $venda->numero,
+            'cliente_nome' => $venda->cliente_nome,
+            'cliente_exibicao' => $venda->cliente_exibicao,
+            'comprovante_url' => route('vendas.comprovante', $venda),
             'status' => $venda->status,
             'status_label' => $venda->status_label,
             'forma_pagamento' => $venda->forma_pagamento,

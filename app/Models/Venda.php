@@ -14,6 +14,7 @@ class Venda extends Model
     protected $fillable = [
         'numero',
         'cliente_id',
+        'cliente_nome',
         'ordem_servico_id',
         'user_id',
         'subtotal',
@@ -105,6 +106,13 @@ class Venda extends Model
         }
 
         return self::FORMAS_PAGAMENTO[$this->forma_pagamento] ?? $this->forma_pagamento ?? '';
+    }
+
+    public function getClienteExibicaoAttribute(): string
+    {
+        return $this->cliente?->nome
+            ?: ($this->cliente_nome
+                ?: ($this->ordemServico?->cliente_exibicao ?: 'Consumidor final'));
     }
 
     public function getValorPixAttribute(): float

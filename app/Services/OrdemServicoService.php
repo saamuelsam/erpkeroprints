@@ -293,6 +293,7 @@ class OrdemServicoService
         $venda = Venda::create([
             'numero' => Venda::gerarNumero(),
             'cliente_id' => $os->cliente_id,
+            'cliente_nome' => $os->cliente_id ? null : $os->cliente_nome,
             'ordem_servico_id' => $os->id,
             'user_id' => Auth::id(),
             'subtotal' => $subtotal,

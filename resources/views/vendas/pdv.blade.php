@@ -159,13 +159,20 @@
             <div class="card-header"><i class="fa-solid fa-cash-register me-2"></i>Pagamento</div>
             <div class="card-body">
                 <div class="mb-3">
-                    <label class="form-label fw-semibold">Cliente</label>
+                    <label class="form-label fw-semibold">Cliente cadastrado</label>
                     <select id="clienteId" class="form-select">
                         <option value="">Consumidor final</option>
                         @foreach($clientes as $cliente)
                             <option value="{{ $cliente->id }}" data-email="{{ $cliente->email }}">{{ $cliente->nome }}</option>
                         @endforeach
                     </select>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Nome do cliente na nota <span class="text-muted fw-normal">(opcional)</span></label>
+                    <input type="text" id="clienteNome" class="form-control" maxlength="150"
+                           placeholder="Digite o nome do cliente">
+                    <div class="form-text">Use para identificar a venda sem cadastrar o cliente.</div>
                 </div>
 
                 <div class="mb-3">
@@ -256,6 +263,9 @@
                     <button type="button" id="btnFinalizar" class="btn btn-success btn-lg w-100">
                         <i class="fa-solid fa-check me-2"></i>Finalizar venda
                     </button>
+                    <button type="button" id="btnImprimirUltima" class="btn btn-outline-secondary w-100 mt-2" style="display:none">
+                        <i class="fa-solid fa-print me-2"></i>Imprimir última nota
+                    </button>
                 </div>
             </div>
         </div>
@@ -313,6 +323,7 @@ const canalCliente = 'BroadcastChannel' in window ? new BroadcastChannel('kero-p
 let carrinho = [];
 let vendaAtual = null;
 let consultaTimer = null;
+let ultimoComprovanteUrl = null;
 
 const scanInput = document.getElementById('scanInput');
 const resultadoBusca = document.getElementById('resultadoBusca');
@@ -325,6 +336,7 @@ const pagamentosMistosEl = document.getElementById('pagamentosMistos');
 const payerEmailBox = document.getElementById('payerEmailBox');
 const formaPagamento = document.getElementById('formaPagamento');
 const clienteId = document.getElementById('clienteId');
+const clienteNome = document.getElementById('clienteNome');
 const payerEmail = document.getElementById('payerEmail');
 const pixManualForm = document.getElementById('pixManualForm');
 const pixManualModalEl = document.getElementById('pixManualModal');
@@ -575,6 +587,9 @@ function renderCarrinho() {
 function publicarCliente(extra = {}) {
     const selectedCliente = clienteId.options[clienteId.selectedIndex];
     const totaisAtuais = totais();
+    const nomeCliente = selectedCliente?.value
+        ? selectedCliente.text
+        : (clienteNome.value.trim() || 'Consumidor final');
 
     canalCliente?.postMessage({
         type: 'pdv-update',
@@ -589,7 +604,7 @@ function publicarCliente(extra = {}) {
         pagamentosMistos: pagamentosMistos(),
         formaPagamento: formaPagamento.options[formaPagamento.selectedIndex]?.text || '',
         formaPagamentoCodigo: formaPagamento.value,
-        cliente: selectedCliente?.value ? selectedCliente.text : 'Consumidor final',
+        cliente: nomeCliente,
         venda: vendaAtual,
         ...extra,
     });
@@ -686,9 +701,17 @@ document.getElementById('btnLimpar').addEventListener('click', () => {
 clienteId.addEventListener('change', () => {
     const selected = clienteId.options[clienteId.selectedIndex];
     if (selected?.dataset.email) payerEmail.value = selected.dataset.email;
+    clienteNome.disabled = Boolean(selected?.value);
+    if (selected?.value) {
+        clienteNome.value = '';
+        clienteNome.placeholder = 'Usando cliente cadastrado';
+    } else {
+        clienteNome.placeholder = 'Digite o nome do cliente';
+    }
     publicarCliente();
 });
 
+clienteNome.addEventListener('input', publicarCliente);
 [descontoInput, valorRecebidoInput, formaPagamento].forEach(el => el?.addEventListener('input', renderCarrinho));
 [descontoInput, valorRecebidoInput, formaPagamento].forEach(el => el?.addEventListener('change', renderCarrinho));
 
@@ -746,6 +769,7 @@ document.getElementById('btnFinalizar').addEventListener('click', () => {
 
     const payload = {
         cliente_id: clienteId.value || null,
+        cliente_nome: clienteId.value ? null : (clienteNome.value.trim() || null),
         forma_pagamento: formaPagamento.value,
         desconto: Number(descontoInput.value || 0),
         valor_recebido: formaPagamento.value === 'DINHEIRO' ? Number(valorRecebidoInput.value || 0) : null,
@@ -775,6 +799,8 @@ document.getElementById('btnFinalizar').addEventListener('click', () => {
         const data = await response.json();
         if (!response.ok) throw new Error(data.message || 'Erro ao finalizar venda.');
         vendaAtual = data.venda;
+        ultimoComprovanteUrl = vendaAtual.comprovante_url || null;
+        document.getElementById('btnImprimirUltima').style.display = ultimoComprovanteUrl ? 'block' : 'none';
         mostrarPix(vendaAtual);
         publicarCliente({ type: 'pdv-sale-created' });
 
@@ -826,6 +852,9 @@ function consultarPix() {
 }
 
 document.getElementById('btnConsultarPix').addEventListener('click', consultarPix);
+document.getElementById('btnImprimirUltima').addEventListener('click', () => {
+    if (ultimoComprovanteUrl) window.open(ultimoComprovanteUrl, '_blank');
+});
 document.getElementById('btnConfirmarPixManual').addEventListener('click', () => {
     if (!vendaAtual?.id) return;
     pixManualForm?.reset();
@@ -889,6 +918,9 @@ pixManualForm?.addEventListener('submit', event => {
 function novaVenda() {
     carrinho = [];
     vendaAtual = null;
+    clienteNome.value = '';
+    clienteNome.disabled = Boolean(clienteId.value);
+    clienteNome.placeholder = clienteId.value ? 'Usando cliente cadastrado' : 'Digite o nome do cliente';
     descontoInput.value = 0;
     valorRecebidoInput.value = '';
     pagamentosMistosEl.innerHTML = '';

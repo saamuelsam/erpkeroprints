@@ -45,9 +45,12 @@ class VendaService
                 $valorRecebido = $this->valorRecebidoDinheiroMisto($pagamentos);
             }
 
+            $clienteNome = trim((string) ($dados['cliente_nome'] ?? ''));
+
             $venda = Venda::create([
                 'numero' => Venda::gerarNumero(),
                 'cliente_id' => $dados['cliente_id'] ?? null,
+                'cliente_nome' => empty($dados['cliente_id']) && $clienteNome !== '' ? $clienteNome : null,
                 'user_id' => Auth::id(),
                 'subtotal' => $subtotal,
                 'desconto' => $desconto,
