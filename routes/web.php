@@ -67,6 +67,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('vendas', [VendaController::class, 'store'])->name('vendas.store');
     Route::post('vendas/{venda}/consultar-pagamento', [VendaController::class, 'consultarPagamento'])->name('vendas.consultar-pagamento');
     Route::post('vendas/{venda}/confirmar-manual', [VendaController::class, 'confirmarManual'])->name('vendas.confirmar-manual');
+    Route::post('vendas/{venda}/receber-pendente', [VendaController::class, 'receberPendente'])->name('vendas.receber-pendente');
     Route::post('vendas/{venda}/cancelar', [VendaController::class, 'cancelar'])->name('vendas.cancelar');
     Route::get('vendas/{venda}/comprovante', [VendaController::class, 'comprovante'])->name('vendas.comprovante');
     Route::get('vendas', [VendaController::class, 'index'])->name('vendas.index');

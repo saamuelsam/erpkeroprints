@@ -73,10 +73,21 @@ class VendaController extends Controller
             'cliente_id' => ['nullable', 'exists:clientes,id'],
             'cliente_nome' => ['nullable', 'string', 'max:150'],
             'forma_pagamento' => ['required', 'in:DINHEIRO,PIX,CARTAO_DEBITO,CARTAO_CREDITO,OUTROS,MISTO'],
+            'salvar_pendente' => ['nullable', 'boolean'],
             'desconto' => ['nullable', 'numeric', 'min:0'],
-            'valor_recebido' => ['nullable', 'required_if:forma_pagamento,DINHEIRO', 'numeric', 'min:0'],
+            'valor_recebido' => [
+                'nullable',
+                Rule::requiredIf(fn() => $request->input('forma_pagamento') === 'DINHEIRO' && !$request->boolean('salvar_pendente')),
+                'numeric',
+                'min:0',
+            ],
             'payer_email' => ['nullable', 'email'],
-            'pagamentos' => ['exclude_unless:forma_pagamento,MISTO', 'required_if:forma_pagamento,MISTO', 'array', 'min:2'],
+            'pagamentos' => [
+                'exclude_unless:forma_pagamento,MISTO',
+                Rule::requiredIf(fn() => $request->input('forma_pagamento') === 'MISTO' && !$request->boolean('salvar_pendente')),
+                'array',
+                'min:2',
+            ],
             'pagamentos.*.forma' => ['required_with:pagamentos', 'in:DINHEIRO,PIX,CARTAO_DEBITO,CARTAO_CREDITO,OUTROS'],
             'pagamentos.*.valor' => ['required_with:pagamentos', 'numeric', 'min:0.01'],
             'pagamentos.*.valor_recebido' => ['nullable', 'numeric', 'min:0'],
@@ -100,9 +111,10 @@ class VendaController extends Controller
         $venda = null;
 
         try {
-            $venda = $this->vendaService->criar($validated, $validated['itens']);
+            $salvarPendente = $request->boolean('salvar_pendente');
+            $venda = $this->vendaService->criar($validated, $validated['itens'], !$salvarPendente);
 
-            if ($venda->usaPix()) {
+            if (!$salvarPendente && $venda->usaPix()) {
                 if (filled(config('services.mercado_pago.access_token'))) {
                     $pagamento = $this->mercadoPagoPixService->criarPixComValor($venda, $venda->valor_pix, $validated['payer_email'] ?? null);
                     $venda = $this->vendaService->anexarPix($venda, $pagamento);
@@ -115,9 +127,11 @@ class VendaController extends Controller
 
             return response()->json([
                 'venda' => $this->formatarVenda($venda),
-                'message' => $venda->status === 'PAGA'
+                'message' => $salvarPendente
+                    ? 'Pedido salvo para pagamento na retirada.'
+                    : ($venda->status === 'PAGA'
                     ? 'Venda finalizada com sucesso.'
-                    : 'Pix gerado. Aguarde a confirmacao do pagamento.',
+                    : 'Pix gerado. Aguarde a confirmacao do pagamento.'),
             ]);
         } catch (\Exception $e) {
             if ($venda && $venda->status === 'AGUARDANDO_PAGAMENTO') {
@@ -186,6 +200,25 @@ class VendaController extends Controller
             return response()->json(['message' => 'Venda cancelada.']);
         } catch (\Exception $e) {
             return response()->json(['message' => $e->getMessage()], 422);
+        }
+    }
+
+    public function receberPendente(Venda $venda)
+    {
+        try {
+            if ($venda->status !== 'AGUARDANDO_PAGAMENTO') {
+                return back()->with('erro', 'Somente pedidos pendentes podem ser recebidos.');
+            }
+
+            if ($venda->usaPix() && $venda->mercado_pago_payment_id) {
+                return back()->with('erro', 'Consulte ou confirme o Pix desta venda pelo PDV.');
+            }
+
+            $this->vendaService->confirmarPagamento($venda);
+
+            return back()->with('sucesso', "Pedido {$venda->numero} recebido com sucesso.");
+        } catch (\Exception $e) {
+            return back()->with('erro', $e->getMessage());
         }
     }
 

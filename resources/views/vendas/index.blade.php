@@ -82,9 +82,19 @@
                                     @endif
                                 </td>
                                 <td class="text-end">
-                                    <a href="{{ route('vendas.comprovante', $venda) }}" class="btn btn-sm btn-outline-secondary" title="Imprimir comprovante">
-                                        <i class="fa-solid fa-print"></i>
-                                    </a>
+                                    <div class="d-flex gap-1 justify-content-end">
+                                        @if($venda->status === 'AGUARDANDO_PAGAMENTO')
+                                            <form method="POST" action="{{ route('vendas.receber-pendente', $venda) }}">
+                                                @csrf
+                                                <button type="submit" class="btn btn-sm btn-outline-success" title="Receber pedido">
+                                                    <i class="fa-solid fa-check"></i>
+                                                </button>
+                                            </form>
+                                        @endif
+                                        <a href="{{ route('vendas.comprovante', $venda) }}" class="btn btn-sm btn-outline-secondary" title="Imprimir comprovante">
+                                            <i class="fa-solid fa-print"></i>
+                                        </a>
+                                    </div>
                                 </td>
                             </tr>
                         @endforeach

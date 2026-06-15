@@ -8,7 +8,7 @@
     .pdv-shell { align-items: start; display: grid; grid-template-columns: minmax(0, 1fr) 390px; gap: 16px; }
     .pdv-main { min-width: 0; }
     .pdv-side { position: sticky; top: 124px; }
-    .pdv-payment-card .card-body { max-height: calc(100vh - 142px); overflow-y: auto; }
+    .pdv-payment-card .card-body { max-height: calc(100vh - 148px); overflow-y: auto; padding: 12px; }
     .pdv-cart { max-height: calc(100vh - 315px); overflow-y: auto; }
     .pdv-total { font-size: 2.4rem; line-height: 1; }
     .pdv-scan-input { font-size: 1rem; height: 44px; }
@@ -18,16 +18,20 @@
         border: 1px solid #D9E2EC;
         border-radius: 8px;
         display: none;
-        padding: 12px;
+        margin: -2px 0 10px;
+        padding: 10px;
+        position: sticky;
+        top: 0;
+        z-index: 5;
     }
-    .pix-box img { max-width: 210px; width: 100%; }
-    .pix-box textarea { font-size: .78rem; max-height: 84px; resize: none; }
+    .pix-box img { max-width: 148px; width: 100%; }
+    .pix-box textarea { font-size: .72rem; max-height: 58px; min-height: 44px; resize: none; }
     .pdv-brand-logo { max-height: 56px; width: auto; }
     .cash-panel {
         background: #F8FAFC;
         border: 1px solid #D9E2EC;
         border-radius: 8px;
-        padding: 12px;
+        padding: 10px;
     }
     .change-display {
         color: #047857;
@@ -55,6 +59,8 @@
         padding-bottom: 2px;
         position: sticky;
     }
+    .pdv-payment-card .mb-3 { margin-bottom: .65rem !important; }
+    .pdv-payment-card .form-text { font-size: .74rem; margin-top: .25rem; }
     .pdv-toast-stack {
         position: fixed;
         right: 22px;
@@ -202,10 +208,10 @@
                             <i class="fa-solid fa-rotate me-1"></i>Consultar
                         </button>
                     </div>
-                    <div class="text-center">
-                        <img id="pixQrImage" alt="QR Code Pix" class="mx-auto mb-2">
+                    <div class="d-flex gap-2 align-items-center">
+                        <img id="pixQrImage" alt="QR Code Pix" class="flex-shrink-0">
+                        <textarea id="pixCopiaCola" class="form-control small" rows="2" readonly></textarea>
                     </div>
-                    <textarea id="pixCopiaCola" class="form-control small" rows="3" readonly></textarea>
                     <button type="button" class="btn btn-success w-100 mt-2" id="btnConfirmarPixManual" style="display:none">
                         <i class="fa-solid fa-check me-1"></i>Confirmar Pix manual
                     </button>
@@ -262,6 +268,9 @@
                 <div class="pdv-actions mt-3">
                     <button type="button" id="btnFinalizar" class="btn btn-success btn-lg w-100">
                         <i class="fa-solid fa-check me-2"></i>Finalizar venda
+                    </button>
+                    <button type="button" id="btnSalvarPedido" class="btn btn-outline-primary w-100 mt-2">
+                        <i class="fa-solid fa-bookmark me-2"></i>Salvar pedido
                     </button>
                     <button type="button" id="btnImprimirUltima" class="btn btn-outline-secondary w-100 mt-2" style="display:none">
                         <i class="fa-solid fa-print me-2"></i>Imprimir última nota
@@ -741,6 +750,56 @@ document.querySelectorAll('.cash-fast').forEach(botao => {
     });
 });
 
+document.getElementById('btnSalvarPedido').addEventListener('click', () => {
+    if (!carrinho.length) {
+        notificar('warning', 'Carrinho vazio', 'Adicione pelo menos um produto para salvar o pedido.');
+        return;
+    }
+
+    const payload = {
+        cliente_id: clienteId.value || null,
+        cliente_nome: clienteId.value ? null : (clienteNome.value.trim() || null),
+        forma_pagamento: formaPagamento.value,
+        salvar_pendente: true,
+        desconto: Number(descontoInput.value || 0),
+        valor_recebido: null,
+        payer_email: payerEmail.value || null,
+        itens: carrinho.map(item => ({
+            produto_id: item.produto_id,
+            descricao: item.descricao,
+            quantidade: item.quantidade,
+            preco_unitario: item.preco_unitario,
+        })),
+    };
+
+    if (formaPagamento.value === 'MISTO' && pagamentosMistos().length) {
+        payload.pagamentos = pagamentosMistos();
+    }
+
+    fetch(vendaStoreUrl, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': csrfToken,
+        },
+        body: JSON.stringify(payload),
+    })
+    .then(async response => {
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.message || 'Erro ao salvar pedido.');
+
+        vendaAtual = data.venda;
+        ultimoComprovanteUrl = vendaAtual.comprovante_url || null;
+        document.getElementById('btnImprimirUltima').style.display = ultimoComprovanteUrl ? 'block' : 'none';
+        document.getElementById('pixBox').style.display = 'none';
+        publicarCliente({ type: 'pdv-order-saved' });
+        notificar('success', 'Pedido salvo', data.message);
+        novaVenda();
+    })
+    .catch(error => notificar('error', 'Erro ao salvar pedido', error.message));
+});
+
 document.getElementById('btnFinalizar').addEventListener('click', () => {
     if (!carrinho.length) {
         notificar('warning', 'Carrinho vazio', 'Adicione pelo menos um produto para finalizar.');
@@ -815,7 +874,9 @@ document.getElementById('btnFinalizar').addEventListener('click', () => {
 });
 
 function mostrarPix(venda) {
-    document.getElementById('pixBox').style.display = (venda.forma_pagamento === 'PIX' || Number(venda.valor_pix || 0) > 0) ? 'block' : 'none';
+    const pixBox = document.getElementById('pixBox');
+    const deveExibirPix = venda.forma_pagamento === 'PIX' || Number(venda.valor_pix || 0) > 0;
+    pixBox.style.display = deveExibirPix ? 'block' : 'none';
     document.getElementById('pixStatus').textContent = venda.status_label;
     document.getElementById('pixCopiaCola').value = venda.pix_qr_code || '';
     document.getElementById('pixQrImage').src = venda.pix_qr_code_base64
@@ -823,6 +884,9 @@ function mostrarPix(venda) {
         : (venda.pix_qr_code_image_url || '');
     document.getElementById('btnConsultarPix').style.display = venda.pix_manual ? 'none' : 'block';
     document.getElementById('btnConfirmarPixManual').style.display = venda.pix_manual ? 'block' : 'none';
+    if (deveExibirPix) {
+        pixBox.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
     publicarCliente();
 }
 

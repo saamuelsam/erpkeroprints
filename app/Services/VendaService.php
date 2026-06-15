@@ -16,9 +16,9 @@ class VendaService
     ) {
     }
 
-    public function criar(array $dados, array $itens): Venda
+    public function criar(array $dados, array $itens, bool $confirmarAutomaticamente = true): Venda
     {
-        return DB::transaction(function () use ($dados, $itens) {
+        return DB::transaction(function () use ($dados, $itens, $confirmarAutomaticamente) {
             $itensNormalizados = $this->normalizarItens($itens);
 
             if (empty($itensNormalizados)) {
@@ -36,9 +36,14 @@ class VendaService
             $valorRecebido = $dados['forma_pagamento'] === 'DINHEIRO'
                 ? round((float) ($dados['valor_recebido'] ?? 0), 2)
                 : null;
-            $pagamentos = $this->normalizarPagamentos($dados, $valorTotal);
+            if (!$confirmarAutomaticamente) {
+                $valorRecebido = null;
+            }
+            $pagamentos = !$confirmarAutomaticamente
+                ? null
+                : $this->normalizarPagamentos($dados, $valorTotal);
 
-            if ($dados['forma_pagamento'] === 'DINHEIRO' && $valorRecebido < $valorTotal) {
+            if ($confirmarAutomaticamente && $dados['forma_pagamento'] === 'DINHEIRO' && $valorRecebido < $valorTotal) {
                 throw new RuntimeException('O valor recebido em dinheiro e menor que o total da venda.');
             }
             if ($dados['forma_pagamento'] === 'MISTO') {
@@ -66,7 +71,7 @@ class VendaService
                 $venda->itens()->create($item);
             }
 
-            if (!$venda->usaPix()) {
+            if ($confirmarAutomaticamente && !$venda->usaPix()) {
                 $this->confirmarPagamento($venda);
             }
 
@@ -151,6 +156,13 @@ class VendaService
 
             if ($venda->status === 'CANCELADA') {
                 throw new RuntimeException('Venda cancelada nao pode ser confirmada.');
+            }
+
+            if ($venda->forma_pagamento === 'DINHEIRO' && $venda->valor_recebido === null) {
+                $venda->update([
+                    'valor_recebido' => (float) $venda->valor_total,
+                    'troco' => 0,
+                ]);
             }
 
             foreach ($venda->itens as $item) {
