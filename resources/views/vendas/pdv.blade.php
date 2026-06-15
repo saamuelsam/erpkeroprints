@@ -93,6 +93,7 @@
 @endpush
 
 @section('content')
+@php($pedidoEditando = $pedidoEditando ?? null)
 <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
     <div class="d-flex align-items-center gap-3">
         <img src="{{ asset('images/logo-color.png') }}" alt="Kero Prints Gráfica e Papelaria" class="pdv-brand-logo">
@@ -102,6 +103,9 @@
         </div>
     </div>
     <div class="d-flex gap-2">
+        <a href="{{ route('vendas.pedidos-salvos') }}" class="btn btn-outline-primary">
+            <i class="fa-regular fa-bookmark me-1"></i>Pedidos salvos
+        </a>
         <a href="{{ route('vendas.index') }}" class="btn btn-outline-secondary">
             <i class="fa-solid fa-list me-1"></i>Histórico
         </a>
@@ -110,6 +114,16 @@
         </a>
     </div>
 </div>
+
+@if($pedidoEditando)
+    <div class="alert alert-warning d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div>
+            <strong>{{ $pedidoEditando['numero'] }}</strong>
+            <span class="ms-1">esta aberto para editar, adicionar produtos ou finalizar a venda.</span>
+        </div>
+        <a href="{{ route('vendas.pedidos-salvos') }}" class="btn btn-sm btn-outline-dark">Voltar aos pedidos</a>
+    </div>
+@endif
 
 <div class="pdv-toast-stack" id="pdvToastStack" aria-live="polite" aria-atomic="true"></div>
 
@@ -360,6 +374,11 @@
 <script>
 const buscaUrl = '{{ route('api.produtos.buscar') }}';
 const vendaStoreUrl = '{{ route('vendas.store') }}';
+const pedidoEditando = @json($pedidoEditando);
+const modoEdicaoPedido = Boolean(pedidoEditando?.id);
+const pedidoUpdateUrl = modoEdicaoPedido ? `/vendas/${pedidoEditando.id}/pedido-salvo` : vendaStoreUrl;
+const pedidosSalvosUrl = '{{ route('vendas.pedidos-salvos') }}';
+const pdvUrl = '{{ route('vendas.pdv') }}';
 const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 const canalCliente = 'BroadcastChannel' in window ? new BroadcastChannel('kero-pdv-cliente') : null;
 let carrinho = [];
@@ -786,6 +805,18 @@ document.querySelectorAll('.cash-fast').forEach(botao => {
     });
 });
 
+function enviarVenda(payload) {
+    return fetch(pedidoUpdateUrl, {
+        method: modoEdicaoPedido ? 'PATCH' : 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': csrfToken,
+        },
+        body: JSON.stringify(payload),
+    });
+}
+
 document.getElementById('btnSalvarPedido').addEventListener('click', () => {
     if (!carrinho.length) {
         notificar('warning', 'Carrinho vazio', 'Adicione pelo menos um produto para salvar o pedido.');
@@ -812,15 +843,7 @@ document.getElementById('btnSalvarPedido').addEventListener('click', () => {
         payload.pagamentos = pagamentosMistos();
     }
 
-    fetch(vendaStoreUrl, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-            'X-CSRF-TOKEN': csrfToken,
-        },
-        body: JSON.stringify(payload),
-    })
+    enviarVenda(payload)
     .then(async response => {
         const data = await response.json();
         if (!response.ok) throw new Error(data.message || 'Erro ao salvar pedido.');
@@ -830,7 +853,11 @@ document.getElementById('btnSalvarPedido').addEventListener('click', () => {
         document.getElementById('btnImprimirUltima').style.display = ultimoComprovanteUrl ? 'block' : 'none';
         document.getElementById('pixBox').style.display = 'none';
         publicarCliente({ type: 'pdv-order-saved' });
-        notificar('success', 'Pedido salvo', data.message);
+        notificar('success', 'Pedido salvo', `${data.message}\nEle esta em Pedidos salvos.`);
+        if (modoEdicaoPedido) {
+            window.location.href = pedidosSalvosUrl;
+            return;
+        }
         novaVenda();
     })
     .catch(error => notificar('error', 'Erro ao salvar pedido', error.message));
@@ -881,15 +908,7 @@ document.getElementById('btnFinalizar').addEventListener('click', () => {
         payload.pagamentos = pagamentosMistos();
     }
 
-    fetch(vendaStoreUrl, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-            'X-CSRF-TOKEN': csrfToken,
-        },
-        body: JSON.stringify(payload),
-    })
+    enviarVenda(payload)
     .then(async response => {
         const data = await response.json();
         if (!response.ok) throw new Error(data.message || 'Erro ao finalizar venda.');
@@ -903,6 +922,10 @@ document.getElementById('btnFinalizar').addEventListener('click', () => {
             iniciarConsultaPix();
         } else {
             notificar('success', 'Venda finalizada', data.message);
+            if (modoEdicaoPedido) {
+                window.location.href = pdvUrl;
+                return;
+            }
             novaVenda();
         }
     })
@@ -948,6 +971,10 @@ function consultarPix() {
         if (vendaAtual.status === 'PAGA') {
             clearInterval(consultaTimer);
             notificar('success', 'Pagamento aprovado', 'Venda finalizada com sucesso.');
+            if (modoEdicaoPedido) {
+                window.location.href = pdvUrl;
+                return;
+            }
             novaVenda();
         }
     });
@@ -1014,6 +1041,10 @@ pixManualForm?.addEventListener('submit', event => {
         mostrarPix(vendaAtual);
         publicarCliente();
         notificar('success', 'Pix confirmado', data.message);
+        if (modoEdicaoPedido) {
+            window.location.href = pdvUrl;
+            return;
+        }
         novaVenda();
     })
     .catch(error => {
@@ -1045,9 +1076,55 @@ function novaVenda() {
     scanInput.focus();
 }
 
+function carregarPedidoEditando() {
+    if (!modoEdicaoPedido) return;
+
+    vendaAtual = pedidoEditando;
+    ultimoComprovanteUrl = pedidoEditando.comprovante_url || null;
+    document.getElementById('btnImprimirUltima').style.display = ultimoComprovanteUrl ? 'block' : 'none';
+    document.getElementById('btnSalvarPedido').innerHTML = '<i class="fa-solid fa-floppy-disk me-2"></i>Salvar alteracoes';
+
+    carrinho = (pedidoEditando.itens || []).map(item => ({
+        produto_id: item.produto_id,
+        descricao: item.descricao,
+        quantidade: Number(item.quantidade || 0),
+        preco_unitario: Number(item.preco_unitario || 0),
+        estoque: Number(item.estoque || 0),
+        unidade: item.unidade || 'UN',
+    }));
+
+    clienteId.value = pedidoEditando.cliente_id || '';
+    if (clienteId.value) {
+        clienteId.dispatchEvent(new Event('change'));
+    } else {
+        clienteNome.value = pedidoEditando.cliente_nome || '';
+        clienteNome.disabled = false;
+        clienteNome.placeholder = 'Digite o nome do cliente';
+    }
+
+    formaPagamento.value = pedidoEditando.forma_pagamento || 'DINHEIRO';
+    descontoInput.value = Number(pedidoEditando.desconto || 0).toFixed(2);
+    valorRecebidoInput.value = pedidoEditando.valor_recebido ? Number(pedidoEditando.valor_recebido).toFixed(2) : '';
+    pagamentosMistosEl.innerHTML = '';
+
+    if (formaPagamento.value === 'MISTO') {
+        const pagamentos = Array.isArray(pedidoEditando.pagamentos) ? pedidoEditando.pagamentos : [];
+        if (pagamentos.length) {
+            pagamentos.forEach(pagamento => addPagamentoMisto(pagamento.forma, pagamento.valor));
+        } else {
+            addPagamentoMisto('PIX', Math.max(0, totais().total));
+            addPagamentoMisto('CARTAO_CREDITO', 0);
+        }
+    }
+
+    renderCarrinho();
+    publicarCliente({ type: 'pdv-order-loaded' });
+}
+
 window.addEventListener('load', () => {
     scanInput.focus();
-    renderCarrinho();
+    carregarPedidoEditando();
+    if (!modoEdicaoPedido) renderCarrinho();
     setInterval(() => publicarCliente(), 1000);
 });
 </script>

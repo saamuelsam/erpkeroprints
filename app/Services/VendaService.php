@@ -79,6 +79,78 @@ class VendaService
         });
     }
 
+    public function atualizarPedidoPendente(Venda $venda, array $dados, array $itens, bool $confirmarAutomaticamente = false): Venda
+    {
+        return DB::transaction(function () use ($venda, $dados, $itens, $confirmarAutomaticamente) {
+            $venda = Venda::lockForUpdate()->findOrFail($venda->id);
+
+            if ($venda->status !== 'AGUARDANDO_PAGAMENTO') {
+                throw new RuntimeException('Somente pedidos pendentes podem ser editados.');
+            }
+
+            if (filled($venda->mercado_pago_payment_id) || filled($venda->pix_qr_code)) {
+                throw new RuntimeException('Este Pix ja foi gerado. Cancele e crie um novo pedido para alterar itens.');
+            }
+
+            $itensNormalizados = $this->normalizarItens($itens);
+
+            if (empty($itensNormalizados)) {
+                throw new RuntimeException('Adicione pelo menos um produto no pedido.');
+            }
+
+            $subtotal = collect($itensNormalizados)->sum('total_item');
+            $desconto = (float) ($dados['desconto'] ?? 0);
+            $valorTotal = max(0, round($subtotal - $desconto, 2));
+
+            if ($desconto > $subtotal) {
+                throw new RuntimeException('O desconto nao pode ser maior que o subtotal da venda.');
+            }
+
+            $valorRecebido = $dados['forma_pagamento'] === 'DINHEIRO'
+                ? round((float) ($dados['valor_recebido'] ?? 0), 2)
+                : null;
+            if (!$confirmarAutomaticamente) {
+                $valorRecebido = null;
+            }
+
+            $pagamentos = !$confirmarAutomaticamente
+                ? null
+                : $this->normalizarPagamentos($dados, $valorTotal);
+
+            if ($confirmarAutomaticamente && $dados['forma_pagamento'] === 'DINHEIRO' && $valorRecebido < $valorTotal) {
+                throw new RuntimeException('O valor recebido em dinheiro e menor que o total da venda.');
+            }
+            if ($dados['forma_pagamento'] === 'MISTO') {
+                $valorRecebido = $this->valorRecebidoDinheiroMisto($pagamentos);
+            }
+
+            $clienteNome = trim((string) ($dados['cliente_nome'] ?? ''));
+
+            $venda->update([
+                'cliente_id' => $dados['cliente_id'] ?? null,
+                'cliente_nome' => empty($dados['cliente_id']) && $clienteNome !== '' ? $clienteNome : null,
+                'subtotal' => $subtotal,
+                'desconto' => $desconto,
+                'valor_total' => $valorTotal,
+                'valor_recebido' => $valorRecebido,
+                'troco' => $this->calcularTroco($dados['forma_pagamento'], $valorTotal, $valorRecebido, $pagamentos),
+                'forma_pagamento' => $dados['forma_pagamento'],
+                'pagamentos' => $pagamentos,
+            ]);
+
+            $venda->itens()->delete();
+            foreach ($itensNormalizados as $item) {
+                $venda->itens()->create($item);
+            }
+
+            if ($confirmarAutomaticamente && !$venda->usaPix()) {
+                $this->confirmarPagamento($venda);
+            }
+
+            return $venda->fresh(['itens.produto', 'cliente']);
+        });
+    }
+
     public function anexarPix(Venda $venda, array $pagamento): Venda
     {
         $dadosPix = data_get($pagamento, 'point_of_interaction.transaction_data', []);

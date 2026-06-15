@@ -9,9 +9,14 @@
         <h4 class="mb-0 fw-bold">Vendas</h4>
         <p class="text-muted mb-0 small">Histórico das vendas do PDV</p>
     </div>
-    <a href="{{ route('vendas.pdv') }}" class="btn btn-primary">
-        <i class="fa-solid fa-cash-register me-2"></i>Abrir PDV
-    </a>
+    <div class="d-flex gap-2 flex-wrap">
+        <a href="{{ route('vendas.pedidos-salvos') }}" class="btn btn-outline-primary">
+            <i class="fa-regular fa-bookmark me-2"></i>Pedidos salvos
+        </a>
+        <a href="{{ route('vendas.pdv') }}" class="btn btn-primary">
+            <i class="fa-solid fa-cash-register me-2"></i>Abrir PDV
+        </a>
+    </div>
 </div>
 
 <div class="card mb-4">
@@ -94,6 +99,15 @@
                                         <a href="{{ route('vendas.comprovante', $venda) }}" class="btn btn-sm btn-outline-secondary" title="Imprimir comprovante">
                                             <i class="fa-solid fa-print"></i>
                                         </a>
+                                        @if($venda->status !== 'PAGA')
+                                            <form method="POST" action="{{ route('vendas.destroy', $venda) }}" onsubmit="return confirm('Excluir esta venda do historico?');">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Excluir">
+                                                    <i class="fa-solid fa-trash"></i>
+                                                </button>
+                                            </form>
+                                        @endif
                                     </div>
                                 </td>
                             </tr>

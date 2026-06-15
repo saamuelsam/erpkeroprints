@@ -64,12 +64,16 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('vendas/pdv', [VendaController::class, 'pdv'])->name('vendas.pdv');
     Route::get('vendas/cliente', [VendaController::class, 'cliente'])->name('vendas.cliente');
+    Route::get('vendas/pedidos-salvos', [VendaController::class, 'pedidosSalvos'])->name('vendas.pedidos-salvos');
     Route::post('vendas', [VendaController::class, 'store'])->name('vendas.store');
+    Route::get('vendas/{venda}/editar-pedido', [VendaController::class, 'editarPedido'])->name('vendas.editar-pedido');
+    Route::patch('vendas/{venda}/pedido-salvo', [VendaController::class, 'atualizarPedidoSalvo'])->name('vendas.atualizar-pedido');
     Route::post('vendas/{venda}/consultar-pagamento', [VendaController::class, 'consultarPagamento'])->name('vendas.consultar-pagamento');
     Route::post('vendas/{venda}/confirmar-manual', [VendaController::class, 'confirmarManual'])->name('vendas.confirmar-manual');
     Route::post('vendas/{venda}/receber-pendente', [VendaController::class, 'receberPendente'])->name('vendas.receber-pendente');
     Route::post('vendas/{venda}/cancelar', [VendaController::class, 'cancelar'])->name('vendas.cancelar');
     Route::get('vendas/{venda}/comprovante', [VendaController::class, 'comprovante'])->name('vendas.comprovante');
+    Route::delete('vendas/{venda}', [VendaController::class, 'destroy'])->name('vendas.destroy');
     Route::get('vendas', [VendaController::class, 'index'])->name('vendas.index');
 
     // ── Financeiro ────────────────────────────────────────────────────────────

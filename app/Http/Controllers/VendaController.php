@@ -46,13 +46,50 @@ class VendaController extends Controller
         ]);
     }
 
+    public function pedidosSalvos(Request $request)
+    {
+        $query = Venda::with('cliente', 'itens.produto')
+            ->where('status', 'AGUARDANDO_PAGAMENTO')
+            ->whereNull('mercado_pago_payment_id')
+            ->whereNull('pix_qr_code');
+
+        if ($busca = $request->input('busca')) {
+            $query->where(function ($q) use ($busca) {
+                $q->where('numero', 'like', "%{$busca}%")
+                    ->orWhere('cliente_nome', 'like', "%{$busca}%")
+                    ->orWhereHas('cliente', fn($c) => $c->where('nome', 'like', "%{$busca}%"));
+            });
+        }
+
+        $vendas = $query->latest()->paginate(20)->withQueryString();
+
+        return view('vendas.pedidos-salvos', compact('vendas'));
+    }
+
     public function pdv()
     {
-        return view('vendas.pdv', [
+        return view('vendas.pdv', $this->dadosPdv());
+    }
+
+    public function editarPedido(Venda $venda)
+    {
+        if (!$this->pedidoPodeSerEditado($venda)) {
+            return redirect()
+                ->route('vendas.pedidos-salvos')
+                ->with('erro', 'Somente pedidos salvos sem Pix gerado podem ser editados.');
+        }
+
+        return view('vendas.pdv', $this->dadosPdv($venda->load('itens.produto', 'cliente')));
+    }
+
+    private function dadosPdv(?Venda $pedidoEditando = null): array
+    {
+        return [
             'clientes' => Cliente::ativos()->orderBy('nome')->get(['id', 'nome', 'email']),
             'formasPagamento' => Venda::FORMAS_PAGAMENTO,
             'mercadoPagoConfigurado' => filled(config('services.mercado_pago.access_token')),
-        ]);
+            'pedidoEditando' => $pedidoEditando ? $this->formatarVenda($pedidoEditando) : null,
+        ];
     }
 
     public function cliente()
@@ -69,44 +106,7 @@ class VendaController extends Controller
 
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'cliente_id' => ['nullable', 'exists:clientes,id'],
-            'cliente_nome' => ['nullable', 'string', 'max:150'],
-            'forma_pagamento' => ['required', 'in:DINHEIRO,PIX,CARTAO_DEBITO,CARTAO_CREDITO,OUTROS,MISTO'],
-            'salvar_pendente' => ['nullable', 'boolean'],
-            'desconto' => ['nullable', 'numeric', 'min:0'],
-            'valor_recebido' => [
-                'nullable',
-                Rule::requiredIf(fn() => $request->input('forma_pagamento') === 'DINHEIRO' && !$request->boolean('salvar_pendente')),
-                'numeric',
-                'min:0',
-            ],
-            'payer_email' => ['nullable', 'email'],
-            'pagamentos' => [
-                'exclude_unless:forma_pagamento,MISTO',
-                Rule::requiredIf(fn() => $request->input('forma_pagamento') === 'MISTO' && !$request->boolean('salvar_pendente')),
-                'array',
-                'min:2',
-            ],
-            'pagamentos.*.forma' => ['required_with:pagamentos', 'in:DINHEIRO,PIX,CARTAO_DEBITO,CARTAO_CREDITO,OUTROS'],
-            'pagamentos.*.valor' => ['required_with:pagamentos', 'numeric', 'min:0.01'],
-            'pagamentos.*.valor_recebido' => ['nullable', 'numeric', 'min:0'],
-            'itens' => ['required', 'array', 'min:1'],
-            'itens.*.produto_id' => ['required', Rule::exists('produtos', 'id')->whereNull('deleted_at')->where('ativo', true)],
-            'itens.*.descricao' => ['required', 'string', 'max:255'],
-            'itens.*.quantidade' => ['required', 'numeric', 'min:0.001'],
-            'itens.*.preco_unitario' => ['required', 'numeric', 'min:0'],
-        ], [
-            'valor_recebido.required_if' => 'Informe o valor recebido em dinheiro.',
-            'pagamentos.required_if' => 'Informe as formas do pagamento misto.',
-            'pagamentos.array' => 'As formas do pagamento misto precisam estar em formato valido.',
-            'pagamentos.min' => 'Informe pelo menos duas formas de pagamento no pagamento misto.',
-            'pagamentos.*.forma.required_with' => 'Selecione a forma de pagamento.',
-            'pagamentos.*.forma.in' => 'Uma das formas de pagamento selecionadas e invalida.',
-            'pagamentos.*.valor.required_with' => 'Informe o valor de cada forma de pagamento.',
-            'pagamentos.*.valor.min' => 'O valor de cada forma de pagamento precisa ser maior que zero.',
-            'itens.*.produto_id.exists' => 'Um dos produtos nao esta mais disponivel para venda.',
-        ]);
+        $validated = $this->validarVenda($request);
 
         $venda = null;
 
@@ -138,6 +138,42 @@ class VendaController extends Controller
                 $this->vendaService->cancelar($venda);
             }
 
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+    }
+
+    public function atualizarPedidoSalvo(Request $request, Venda $venda)
+    {
+        if (!$this->pedidoPodeSerEditado($venda)) {
+            return response()->json(['message' => 'Somente pedidos salvos sem Pix gerado podem ser editados.'], 422);
+        }
+
+        $validated = $this->validarVenda($request);
+
+        try {
+            $salvarPendente = $request->boolean('salvar_pendente');
+            $venda = $this->vendaService->atualizarPedidoPendente($venda, $validated, $validated['itens'], !$salvarPendente);
+
+            if (!$salvarPendente && $venda->usaPix()) {
+                if (filled(config('services.mercado_pago.access_token'))) {
+                    $pagamento = $this->mercadoPagoPixService->criarPixComValor($venda, $venda->valor_pix, $validated['payer_email'] ?? null);
+                    $venda = $this->vendaService->anexarPix($venda, $pagamento);
+                } else {
+                    $pix = $this->pixManualService->gerarParaVendaComValor($venda, $venda->valor_pix);
+                    $venda = $this->vendaService->anexarPixManual($venda, $pix);
+                    $venda->setAttribute('pix_qr_code_image_url', $pix['qr_code_image_url']);
+                }
+            }
+
+            return response()->json([
+                'venda' => $this->formatarVenda($venda),
+                'message' => $salvarPendente
+                    ? 'Pedido salvo atualizado.'
+                    : ($venda->status === 'PAGA'
+                    ? 'Venda finalizada com sucesso.'
+                    : 'Pix gerado. Aguarde a confirmacao do pagamento.'),
+            ]);
+        } catch (\Exception $e) {
             return response()->json(['message' => $e->getMessage()], 422);
         }
     }
@@ -222,6 +258,83 @@ class VendaController extends Controller
         }
     }
 
+    public function destroy(Request $request, Venda $venda)
+    {
+        try {
+            if ($venda->status === 'PAGA') {
+                throw new \RuntimeException('Venda paga nao pode ser excluida.');
+            }
+
+            $numero = $venda->numero;
+            if ($venda->status !== 'CANCELADA') {
+                $this->vendaService->cancelar($venda);
+                $venda->refresh();
+            }
+            $venda->delete();
+
+            if ($request->expectsJson()) {
+                return response()->json(['message' => "Venda {$numero} excluida."]);
+            }
+
+            return back()->with('sucesso', "Venda {$numero} excluida.");
+        } catch (\Exception $e) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $e->getMessage()], 422);
+            }
+
+            return back()->with('erro', $e->getMessage());
+        }
+    }
+
+    private function validarVenda(Request $request): array
+    {
+        return $request->validate([
+            'cliente_id' => ['nullable', 'exists:clientes,id'],
+            'cliente_nome' => ['nullable', 'string', 'max:150'],
+            'forma_pagamento' => ['required', 'in:DINHEIRO,PIX,CARTAO_DEBITO,CARTAO_CREDITO,OUTROS,MISTO'],
+            'salvar_pendente' => ['nullable', 'boolean'],
+            'desconto' => ['nullable', 'numeric', 'min:0'],
+            'valor_recebido' => [
+                'nullable',
+                Rule::requiredIf(fn() => $request->input('forma_pagamento') === 'DINHEIRO' && !$request->boolean('salvar_pendente')),
+                'numeric',
+                'min:0',
+            ],
+            'payer_email' => ['nullable', 'email'],
+            'pagamentos' => [
+                'exclude_unless:forma_pagamento,MISTO',
+                Rule::requiredIf(fn() => $request->input('forma_pagamento') === 'MISTO' && !$request->boolean('salvar_pendente')),
+                'array',
+                'min:2',
+            ],
+            'pagamentos.*.forma' => ['required_with:pagamentos', 'in:DINHEIRO,PIX,CARTAO_DEBITO,CARTAO_CREDITO,OUTROS'],
+            'pagamentos.*.valor' => ['required_with:pagamentos', 'numeric', 'min:0.01'],
+            'pagamentos.*.valor_recebido' => ['nullable', 'numeric', 'min:0'],
+            'itens' => ['required', 'array', 'min:1'],
+            'itens.*.produto_id' => ['required', Rule::exists('produtos', 'id')->whereNull('deleted_at')->where('ativo', true)],
+            'itens.*.descricao' => ['required', 'string', 'max:255'],
+            'itens.*.quantidade' => ['required', 'numeric', 'min:0.001'],
+            'itens.*.preco_unitario' => ['required', 'numeric', 'min:0'],
+        ], [
+            'valor_recebido.required_if' => 'Informe o valor recebido em dinheiro.',
+            'pagamentos.required_if' => 'Informe as formas do pagamento misto.',
+            'pagamentos.array' => 'As formas do pagamento misto precisam estar em formato valido.',
+            'pagamentos.min' => 'Informe pelo menos duas formas de pagamento no pagamento misto.',
+            'pagamentos.*.forma.required_with' => 'Selecione a forma de pagamento.',
+            'pagamentos.*.forma.in' => 'Uma das formas de pagamento selecionadas e invalida.',
+            'pagamentos.*.valor.required_with' => 'Informe o valor de cada forma de pagamento.',
+            'pagamentos.*.valor.min' => 'O valor de cada forma de pagamento precisa ser maior que zero.',
+            'itens.*.produto_id.exists' => 'Um dos produtos nao esta mais disponivel para venda.',
+        ]);
+    }
+
+    private function pedidoPodeSerEditado(Venda $venda): bool
+    {
+        return $venda->status === 'AGUARDANDO_PAGAMENTO'
+            && blank($venda->mercado_pago_payment_id)
+            && blank($venda->pix_qr_code);
+    }
+
     private function formatarVenda(Venda $venda): array
     {
         $venda->loadMissing('itens.produto', 'cliente');
@@ -229,6 +342,7 @@ class VendaController extends Controller
         return [
             'id' => $venda->id,
             'numero' => $venda->numero,
+            'cliente_id' => $venda->cliente_id,
             'cliente_nome' => $venda->cliente_nome,
             'cliente_exibicao' => $venda->cliente_exibicao,
             'comprovante_url' => route('vendas.comprovante', $venda),
@@ -253,10 +367,13 @@ class VendaController extends Controller
             'pix_confirmacao_pagador' => $venda->pix_confirmacao_pagador,
             'mercado_pago_status' => $venda->mercado_pago_status,
             'itens' => $venda->itens->map(fn($item) => [
+                'produto_id' => $item->produto_id,
                 'descricao' => $item->descricao,
                 'quantidade' => (float) $item->quantidade,
                 'preco_unitario' => (float) $item->preco_unitario,
                 'total_item' => (float) $item->total_item,
+                'estoque' => (float) ($item->produto?->quantidade_estoque ?? 0),
+                'unidade' => $item->produto?->unidade_medida ?? 'UN',
             ])->values(),
         ];
     }
