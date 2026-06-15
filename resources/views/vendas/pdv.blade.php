@@ -8,7 +8,7 @@
     .pdv-shell { align-items: start; display: grid; grid-template-columns: minmax(0, 1fr) 390px; gap: 16px; }
     .pdv-main { min-width: 0; }
     .pdv-side { position: sticky; top: 124px; }
-    .pdv-payment-card .card-body { max-height: calc(100vh - 148px); overflow-y: auto; padding: 12px; }
+    .pdv-payment-card .card-body { max-height: none; overflow: visible; padding: 12px; }
     .pdv-cart { max-height: calc(100vh - 315px); overflow-y: auto; }
     .pdv-total { font-size: 2.4rem; line-height: 1; }
     .pdv-scan-input { font-size: 1rem; height: 44px; }
@@ -20,12 +20,10 @@
         display: none;
         margin: -2px 0 10px;
         padding: 10px;
-        position: sticky;
-        top: 0;
-        z-index: 5;
     }
-    .pix-box img { max-width: 148px; width: 100%; }
-    .pix-box textarea { font-size: .72rem; max-height: 58px; min-height: 44px; resize: none; }
+    .pix-modal-qr { max-width: 320px; width: 100%; }
+    .pix-copy-text { font-size: .78rem; min-height: 86px; resize: none; }
+    .pix-amount { color: #047857; font-size: 2.15rem; font-weight: 800; line-height: 1; }
     .pdv-brand-logo { max-height: 56px; width: auto; }
     .cash-panel {
         background: #F8FAFC;
@@ -199,22 +197,15 @@
                 </div>
 
                 <div class="pix-box mb-3" id="pixBox">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div class="d-flex justify-content-between align-items-center gap-2">
                         <div>
                             <div class="fw-bold"><i class="fa-brands fa-pix me-1"></i>Pix</div>
                             <div class="small text-muted" id="pixStatus">Aguardando pagamento...</div>
                         </div>
-                        <button type="button" class="btn btn-sm btn-outline-primary" id="btnConsultarPix">
-                            <i class="fa-solid fa-rotate me-1"></i>Consultar
+                        <button type="button" class="btn btn-sm btn-primary" id="btnAbrirPixModal">
+                            <i class="fa-brands fa-pix me-1"></i>Ver QR
                         </button>
                     </div>
-                    <div class="d-flex gap-2 align-items-center">
-                        <img id="pixQrImage" alt="QR Code Pix" class="flex-shrink-0">
-                        <textarea id="pixCopiaCola" class="form-control small" rows="2" readonly></textarea>
-                    </div>
-                    <button type="button" class="btn btn-success w-100 mt-2" id="btnConfirmarPixManual" style="display:none">
-                        <i class="fa-solid fa-check me-1"></i>Confirmar Pix manual
-                    </button>
                 </div>
 
                 <div class="mb-3 cash-panel" id="cashBox" style="display:none">
@@ -321,6 +312,48 @@
         </form>
     </div>
 </div>
+
+<div class="modal fade" id="pixPagamentoModal" tabindex="-1" aria-labelledby="pixPagamentoModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div>
+                    <h5 class="modal-title fw-bold" id="pixPagamentoModalLabel">
+                        <i class="fa-brands fa-pix me-2"></i>Pagamento Pix
+                    </h5>
+                    <div class="text-muted small" id="pixModalStatus">Aguardando pagamento...</div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row g-4 align-items-center">
+                    <div class="col-12 col-md-5 text-center">
+                        <img id="pixQrImage" alt="QR Code Pix" class="pix-modal-qr mx-auto">
+                    </div>
+                    <div class="col-12 col-md-7">
+                        <div class="text-muted fw-semibold small text-uppercase">Valor a pagar</div>
+                        <div class="pix-amount mb-3" id="pixValorModal">R$ 0,00</div>
+
+                        <label class="form-label fw-semibold">Pix copia e cola</label>
+                        <textarea id="pixCopiaCola" class="form-control pix-copy-text" rows="4" readonly></textarea>
+
+                        <div class="d-grid gap-2 mt-3">
+                            <button type="button" class="btn btn-outline-secondary" id="btnCopiarPix">
+                                <i class="fa-regular fa-copy me-1"></i>Copiar código Pix
+                            </button>
+                            <button type="button" class="btn btn-outline-primary" id="btnConsultarPix">
+                                <i class="fa-solid fa-rotate me-1"></i>Consultar pagamento
+                            </button>
+                            <button type="button" class="btn btn-success" id="btnConfirmarPixManual" style="display:none">
+                                <i class="fa-solid fa-check me-1"></i>Confirmar Pix manual
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 @endsection
 
 @push('scripts')
@@ -350,6 +383,8 @@ const payerEmail = document.getElementById('payerEmail');
 const pixManualForm = document.getElementById('pixManualForm');
 const pixManualModalEl = document.getElementById('pixManualModal');
 const pixManualModal = pixManualModalEl ? new bootstrap.Modal(pixManualModalEl) : null;
+const pixPagamentoModalEl = document.getElementById('pixPagamentoModal');
+const pixPagamentoModal = pixPagamentoModalEl ? new bootstrap.Modal(pixPagamentoModalEl) : null;
 const pixManualErro = document.getElementById('pixManualErro');
 const pdvToastStack = document.getElementById('pdvToastStack');
 let leituraTimer = null;
@@ -702,6 +737,7 @@ canalCliente?.addEventListener('message', event => {
 document.getElementById('btnLimpar').addEventListener('click', () => {
     carrinho = [];
     vendaAtual = null;
+    pixPagamentoModal?.hide();
     document.getElementById('pixBox').style.display = 'none';
     renderCarrinho();
     scanInput.focus();
@@ -878,6 +914,8 @@ function mostrarPix(venda) {
     const deveExibirPix = venda.forma_pagamento === 'PIX' || Number(venda.valor_pix || 0) > 0;
     pixBox.style.display = deveExibirPix ? 'block' : 'none';
     document.getElementById('pixStatus').textContent = venda.status_label;
+    document.getElementById('pixModalStatus').textContent = venda.status_label;
+    document.getElementById('pixValorModal').textContent = dinheiro(venda.valor_pix || venda.valor_total || 0);
     document.getElementById('pixCopiaCola').value = venda.pix_qr_code || '';
     document.getElementById('pixQrImage').src = venda.pix_qr_code_base64
         ? `data:image/png;base64,${venda.pix_qr_code_base64}`
@@ -885,7 +923,7 @@ function mostrarPix(venda) {
     document.getElementById('btnConsultarPix').style.display = venda.pix_manual ? 'none' : 'block';
     document.getElementById('btnConfirmarPixManual').style.display = venda.pix_manual ? 'block' : 'none';
     if (deveExibirPix) {
-        pixBox.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        pixPagamentoModal?.show();
     }
     publicarCliente();
 }
@@ -916,6 +954,19 @@ function consultarPix() {
 }
 
 document.getElementById('btnConsultarPix').addEventListener('click', consultarPix);
+document.getElementById('btnAbrirPixModal').addEventListener('click', () => pixPagamentoModal?.show());
+document.getElementById('btnCopiarPix').addEventListener('click', () => {
+    const codigo = document.getElementById('pixCopiaCola').value;
+    if (!codigo) return;
+
+    navigator.clipboard?.writeText(codigo)
+        .then(() => notificar('success', 'Pix copiado', 'Código Pix copiado para a área de transferência.'))
+        .catch(() => {
+            document.getElementById('pixCopiaCola').select();
+            document.execCommand('copy');
+            notificar('success', 'Pix copiado', 'Código Pix copiado para a área de transferência.');
+        });
+});
 document.getElementById('btnImprimirUltima').addEventListener('click', () => {
     if (ultimoComprovanteUrl) window.open(ultimoComprovanteUrl, '_blank');
 });
@@ -988,6 +1039,7 @@ function novaVenda() {
     descontoInput.value = 0;
     valorRecebidoInput.value = '';
     pagamentosMistosEl.innerHTML = '';
+    pixPagamentoModal?.hide();
     document.getElementById('pixBox').style.display = 'none';
     renderCarrinho();
     scanInput.focus();
