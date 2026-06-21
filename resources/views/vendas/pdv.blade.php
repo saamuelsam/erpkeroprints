@@ -915,7 +915,7 @@ document.getElementById('btnFinalizar').addEventListener('click', () => {
         vendaAtual = data.venda;
         ultimoComprovanteUrl = vendaAtual.comprovante_url || null;
         document.getElementById('btnImprimirUltima').style.display = ultimoComprovanteUrl ? 'block' : 'none';
-        mostrarPix(vendaAtual);
+        mostrarPix(vendaAtual, { abrirModal: true });
         publicarCliente({ type: 'pdv-sale-created' });
 
         if (vendaAtual.forma_pagamento === 'PIX' || Number(vendaAtual.valor_pix || 0) > 0) {
@@ -932,7 +932,8 @@ document.getElementById('btnFinalizar').addEventListener('click', () => {
     .catch(error => notificar('error', 'Erro ao finalizar', error.message));
 });
 
-function mostrarPix(venda) {
+function mostrarPix(venda, opcoes = {}) {
+    const abrirModal = Boolean(opcoes.abrirModal);
     const pixBox = document.getElementById('pixBox');
     const deveExibirPix = venda.forma_pagamento === 'PIX' || Number(venda.valor_pix || 0) > 0;
     pixBox.style.display = deveExibirPix ? 'block' : 'none';
@@ -945,7 +946,7 @@ function mostrarPix(venda) {
         : (venda.pix_qr_code_image_url || '');
     document.getElementById('btnConsultarPix').style.display = venda.pix_manual ? 'none' : 'block';
     document.getElementById('btnConfirmarPixManual').style.display = venda.pix_manual ? 'block' : 'none';
-    if (deveExibirPix) {
+    if (deveExibirPix && abrirModal && venda.status !== 'PAGA') {
         pixPagamentoModal?.show();
     }
     publicarCliente();
@@ -1037,7 +1038,9 @@ pixManualForm?.addEventListener('submit', event => {
             throw new Error(erros.join('\n') || data.message || 'Erro ao confirmar Pix.');
         }
         vendaAtual = data.venda;
+        clearInterval(consultaTimer);
         pixManualModal?.hide();
+        pixPagamentoModal?.hide();
         mostrarPix(vendaAtual);
         publicarCliente();
         notificar('success', 'Pix confirmado', data.message);
