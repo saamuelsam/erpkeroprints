@@ -1000,9 +1000,20 @@ document.getElementById('btnImprimirUltima').addEventListener('click', () => {
 });
 document.getElementById('btnConfirmarPixManual').addEventListener('click', () => {
     if (!vendaAtual?.id) return;
-    pixManualForm?.reset();
-    pixManualErro?.classList.add('d-none');
-    pixManualModal?.show();
+
+    const abrirConfirmacaoManual = () => {
+        pixManualForm?.reset();
+        pixManualErro?.classList.add('d-none');
+        pixManualModal?.show();
+    };
+
+    if (pixPagamentoModalEl?.classList.contains('show')) {
+        pixPagamentoModalEl.addEventListener('hidden.bs.modal', abrirConfirmacaoManual, { once: true });
+        pixPagamentoModal?.hide();
+        return;
+    }
+
+    abrirConfirmacaoManual();
 });
 
 pixManualForm?.addEventListener('submit', event => {
