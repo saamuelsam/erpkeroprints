@@ -16,6 +16,7 @@ class AdminSeeder extends Seeder
                 'name'     => 'Administrador',
                 'email'    => 'keroprints@.com',
                 'password' => Hash::make('Keroprints@77'),
+                'perfil'   => 'admin',
             ]
         );
     }

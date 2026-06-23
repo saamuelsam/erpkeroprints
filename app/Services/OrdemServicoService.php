@@ -141,7 +141,14 @@ class OrdemServicoService
                 $this->baixarEstoqueMateriais($os);
             }
 
-            return $os->fresh(['itens', 'cliente']);
+            $osAtualizada = $os->fresh(['itens', 'cliente']);
+
+            if ($osAtualizada->status_pagamento === 'PAGO' && in_array($osAtualizada->status, ['FINALIZADA', 'ENTREGUE'], true)) {
+                $this->baixarEstoqueMateriais($osAtualizada);
+                $this->registrarVendaRecebidaDaOs($osAtualizada);
+            }
+
+            return $osAtualizada->fresh(['itens', 'cliente']);
         });
     }
 
